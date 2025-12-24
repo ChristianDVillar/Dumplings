@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+.expo-shared/
+npm-debug.*
+*.jpeg
+*.jpg
+*.png
+*.gif
+.DS_Store
+*.log
+
