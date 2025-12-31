@@ -82,3 +82,59 @@ export const generateTables = () => {
   };
 };
 
+/**
+ * Normaliza un número de mesa a número para consistencia
+ */
+export const normalizeTableNumber = (tableNumber) => {
+  return Number(tableNumber);
+};
+
+/**
+ * Obtiene los pedidos de una mesa desde el estado, manejando tanto claves numéricas como string
+ */
+export const getTableOrdersFromState = (tableOrders, tableNumber) => {
+  const table = normalizeTableNumber(tableNumber);
+  return tableOrders[table] || tableOrders[String(table)] || [];
+};
+
+/**
+ * Agrupa un array de mesas en filas de un tamaño específico
+ */
+export const groupTablesInRows = (tables, itemsPerRow = 10) => {
+  const rows = [];
+  for (let i = 0; i < tables.length; i += itemsPerRow) {
+    rows.push(tables.slice(i, i + itemsPerRow));
+  }
+  return rows;
+};
+
+/**
+ * Obtiene estilos de sombra compatibles con web y nativo
+ */
+export const getShadowStyles = (shadowConfig = {}) => {
+  const {
+    shadowColor = '#000',
+    shadowOffset = { width: 0, height: 2 },
+    shadowOpacity = 0.3,
+    shadowRadius = 4,
+    elevation = 3,
+    boxShadow = '0px 2px 4px rgba(0, 0, 0, 0.3)'
+  } = shadowConfig;
+
+  // Necesitamos importar Platform aquí, pero como es una función helper,
+  // mejor pasarlo como parámetro o usar una función que retorne los estilos
+  // Por ahora, retornamos un objeto que puede ser usado con Platform.OS
+  return {
+    web: {
+      boxShadow
+    },
+    native: {
+      shadowColor,
+      shadowOffset,
+      shadowOpacity,
+      shadowRadius,
+      elevation
+    }
+  };
+};
+

@@ -34,16 +34,16 @@ const MenuItem = ({
   return (
     <View style={customStyles.menuItem}>
       <View style={customStyles.menuItemHeader}>
-        {item.number && (
+        {item.number ? (
           <View style={customStyles.numberBadge}>
             <Text style={customStyles.numberText}>{item.number}</Text>
           </View>
-        )}
+        ) : null}
         <View style={customStyles.nameContainer}>
           <Text style={customStyles.nameEs}>{item.nameEs}</Text>
-          {item.nameEn && (
+          {item.nameEn ? (
             <Text style={customStyles.nameEn}>{item.nameEn}</Text>
-          )}
+          ) : null}
         </View>
         <View style={customStyles.priceContainer}>
           {totalPrice !== item.price ? (
@@ -56,14 +56,14 @@ const MenuItem = ({
           )}
         </View>
       </View>
-      
-      {(item.descriptionEs || item.descriptionEn) && (
+
+      {(item.descriptionEs || item.descriptionEn) ? (
         <Text style={customStyles.description}>
           {item.descriptionEs || item.descriptionEn}
         </Text>
-      )}
+      ) : null}
 
-      {isMainDish && (
+      {isMainDish ? (
         <View style={customStyles.extrasContainer}>
           <Text style={customStyles.extrasTitle}>Extras (+1€ cada uno):</Text>
           <View style={customStyles.extrasButtons}>
@@ -83,21 +83,21 @@ const MenuItem = ({
                     isSelected && customStyles.extraButtonTextSelected
                   ]}>
                     {extra.charAt(0).toUpperCase() + extra.slice(1)}
-                    {isSelected && ' ✓'}
+                    {isSelected ? ' ✓' : ''}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          {extras.length > 0 && (
+          {extras.length > 0 ? (
             <Text style={customStyles.extrasTotal}>
               Extras seleccionados: {extras.length} (+{extras.length.toFixed(2)}€)
             </Text>
-          )}
+          ) : null}
         </View>
-      )}
+      ) : null}
 
-      {isRefrescos && (
+      {isRefrescos ? (
         <View style={customStyles.drinkContainer}>
           <Text style={customStyles.drinkTitle}>Toca para agregar el refresco:</Text>
           <View style={customStyles.drinkButtons}>
@@ -120,38 +120,38 @@ const MenuItem = ({
                     isSelected && customStyles.drinkButtonTextSelected
                   ]}>
                     {drink}
-                    {isSelected && ' ✓'}
+                    {isSelected ? ' ✓' : ''}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          {selectedDrinkType && (
+          {selectedDrinkType ? (
             <Text style={customStyles.drinkSelected}>
               Refresco seleccionado: {selectedDrinkType}
             </Text>
-          )}
+          ) : null}
         </View>
-      )}
+      ) : null}
       
       <View style={customStyles.menuItemFooter}>
         <View style={customStyles.categoryContainer}>
           <Text style={customStyles.category}>{item.category}</Text>
-          {item.categoryEn !== item.category && (
+          {item.categoryEn !== item.category ? (
             <Text style={customStyles.categoryEn}>{item.categoryEn}</Text>
-          )}
+          ) : null}
         </View>
-        {item.quantity && (
+        {item.quantity ? (
           <Text style={customStyles.quantity}>{item.quantity}</Text>
-        )}
-        {item.customizable && (
+        ) : null}
+        {item.customizable ? (
           <View style={customStyles.customizableBadge}>
             <Text style={customStyles.customizableText}>¡Personalizado!</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
-      {!isRefrescos && (
+      {!isRefrescos ? (
         <TouchableOpacity
           style={[
             customStyles.addButton,
@@ -164,7 +164,7 @@ const MenuItem = ({
             {selectedTable ? `Agregar a Mesa ${selectedTable}` : 'Selecciona una mesa'}
           </Text>
         </TouchableOpacity>
-      )}
+      ) : null}
     </View>
   );
 };

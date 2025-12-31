@@ -7,7 +7,8 @@ import {
   FlatList,
   SafeAreaView,
   TouchableOpacity,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import { menuData } from './menuData';
 import { filterMenu } from './utils/helpers';
@@ -16,6 +17,8 @@ import TableSelector from './components/TableSelector';
 import TablesScreen from './components/TablesScreen';
 import MenuItem from './components/MenuItem';
 import OrderView from './components/OrderView';
+import ChangeTableModal from './components/ChangeTableModal';
+import DiscountCalculator from './components/DiscountCalculator';
 import { menuItemStyles } from './styles/menuItemStyles';
 
 export default function App() {
@@ -35,8 +38,29 @@ export default function App() {
     getTableTotal,
     isTableOccupied,
     clearTable,
-    getTableOrders
+    getTableOrders,
+    moveTableOrders,
+    setTableDiscount,
+    getTableDiscount,
+    getTableTotalWithDiscount,
+    payTableItems,
+    getTableHistory,
+    getTableHistoryTotal
   } = useTableOrders();
+
+  // Estados para modales
+  const [showChangeTableModal, setShowChangeTableModal] = useState(false);
+  const [showDiscountCalculator, setShowDiscountCalculator] = useState(false);
+
+  // Función wrapper para mover mesas que actualiza el estado
+  const handleMoveTable = (fromTable, toTable) => {
+    const success = moveTableOrders(fromTable, toTable);
+    if (success) {
+      // Cambiar a la nueva mesa después de mover para ver los pedidos movidos
+      setSelectedTable(toTable);
+    }
+    return success;
+  };
 
   // Filtrar menú según búsqueda
   const filteredMenu = useMemo(() => {
@@ -120,7 +144,10 @@ export default function App() {
   // Obtener datos del pedido actual
   const currentOrders = selectedTable ? getTableOrders(selectedTable) : [];
   const currentTotal = selectedTable ? getTableTotal(selectedTable) : 0;
+  const currentDiscount = selectedTable ? getTableDiscount(selectedTable) : 0;
+  const currentTotalWithDiscount = selectedTable ? getTableTotalWithDiscount(selectedTable) : 0;
   const currentOccupied = selectedTable ? isTableOccupied(selectedTable) : false;
+  const historyTotal = selectedTable ? getTableHistoryTotal(selectedTable) : 0;
 
   // Manejar selección de mesa
   const handleSelectTable = (table) => {
@@ -183,12 +210,36 @@ export default function App() {
           selectedTable={selectedTable}
           orders={currentOrders}
           total={currentTotal}
+          totalWithDiscount={currentTotalWithDiscount}
+          discount={currentDiscount}
           occupied={currentOccupied}
+          historyTotal={historyTotal}
           onRemoveItem={removeItemFromTable}
           onUpdateQuantity={updateItemQuantity}
           onClearTable={clearTable}
+          onShowChangeTable={() => setShowChangeTableModal(true)}
+          onShowDiscount={() => setShowDiscountCalculator(true)}
+          onPayItems={(orderIds) => payTableItems(selectedTable, orderIds)}
+          onPayAll={() => payTableItems(selectedTable, null)}
         />
       )}
+
+      {/* Modal de Cambiar Mesa */}
+      <ChangeTableModal
+        visible={showChangeTableModal}
+        onClose={() => setShowChangeTableModal(false)}
+        currentTable={selectedTable}
+        onMoveTable={handleMoveTable}
+        isTableOccupied={isTableOccupied}
+      />
+
+      {/* Calculadora de Descuentos */}
+      <DiscountCalculator
+        visible={showDiscountCalculator}
+        onClose={() => setShowDiscountCalculator(false)}
+        onApply={(discount) => setTableDiscount(selectedTable, discount)}
+        currentTotal={currentTotal}
+      />
 
       {/* Barra de Búsqueda */}
       <View style={styles.searchContainer}>
@@ -275,11 +326,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 12,
     paddingHorizontal: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
     borderWidth: 1,
     borderColor: '#FFD700',
   },

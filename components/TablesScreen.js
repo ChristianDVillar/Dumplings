@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { generateTables } from '../utils/helpers';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { generateTables, groupTablesInRows } from '../utils/helpers';
 
 const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
   const tables = generateTables();
@@ -17,40 +17,33 @@ const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
           showsVerticalScrollIndicator={true}
           style={styles.regularScroll}
         >
-          {(() => {
-            // Agrupar mesas en filas de 10
-            const rows = [];
-            for (let i = 0; i < tables.regular.length; i += 10) {
-              rows.push(tables.regular.slice(i, i + 10));
-            }
-            return rows.map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.regularRow}>
-                {row.map((table) => (
-                  <TouchableOpacity
-                    key={table}
-                    style={[
-                      styles.tableCard,
-                      selectedTable === table && styles.tableCardSelected,
-                      isTableOccupied(table) && styles.tableCardOccupied
-                    ]}
-                    onPress={() => onSelectTable(table)}
-                  >
-                    <Text style={[
-                      styles.tableNumber,
-                      selectedTable === table && styles.tableNumberSelected
-                    ]}>
-                      {table}
-                    </Text>
-                    {isTableOccupied(table) && (
-                      <View style={styles.occupiedIndicator}>
-                        <Text style={styles.occupiedText}>●</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ));
-          })()}
+          {groupTablesInRows(tables.regular, 10).map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.regularRow}>
+              {row.map((table) => (
+                <TouchableOpacity
+                  key={table}
+                  style={[
+                    styles.tableCard,
+                    selectedTable === table && styles.tableCardSelected,
+                    isTableOccupied(table) && styles.tableCardOccupied
+                  ]}
+                  onPress={() => onSelectTable(table)}
+                >
+                  <Text style={[
+                    styles.tableNumber,
+                    selectedTable === table && styles.tableNumberSelected
+                  ]}>
+                    {table}
+                  </Text>
+                  {isTableOccupied(table) && (
+                    <View style={styles.occupiedIndicator}>
+                      <Text style={styles.occupiedText}>●</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
         </ScrollView>
       </View>
 
@@ -61,41 +54,34 @@ const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
           showsVerticalScrollIndicator={true}
           style={styles.takeawayScroll}
         >
-          {(() => {
-            // Agrupar mesas en filas de 10
-            const rows = [];
-            for (let i = 0; i < tables.takeaway.length; i += 10) {
-              rows.push(tables.takeaway.slice(i, i + 10));
-            }
-            return rows.map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.takeawayRow}>
-                {row.map((table) => (
-                  <TouchableOpacity
-                    key={table}
-                    style={[
-                      styles.tableCard,
-                      styles.tableCardTakeaway,
-                      selectedTable === table && styles.tableCardSelected,
-                      isTableOccupied(table) && styles.tableCardOccupied
-                    ]}
-                    onPress={() => onSelectTable(table)}
-                  >
-                    <Text style={[
-                      styles.tableNumber,
-                      selectedTable === table && styles.tableNumberSelected
-                    ]}>
-                      {table}
-                    </Text>
-                    {isTableOccupied(table) && (
-                      <View style={styles.occupiedIndicator}>
-                        <Text style={styles.occupiedText}>●</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ));
-          })()}
+          {groupTablesInRows(tables.takeaway, 10).map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.takeawayRow}>
+              {row.map((table) => (
+                <TouchableOpacity
+                  key={table}
+                  style={[
+                    styles.tableCard,
+                    styles.tableCardTakeaway,
+                    selectedTable === table && styles.tableCardSelected,
+                    isTableOccupied(table) && styles.tableCardOccupied
+                  ]}
+                  onPress={() => onSelectTable(table)}
+                >
+                  <Text style={[
+                    styles.tableNumber,
+                    selectedTable === table && styles.tableNumberSelected
+                  ]}>
+                    {table}
+                  </Text>
+                  {isTableOccupied(table) && (
+                    <View style={styles.occupiedIndicator}>
+                      <Text style={styles.occupiedText}>●</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
         </ScrollView>
       </View>
     </View>
@@ -152,11 +138,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
     borderWidth: 2,
     borderColor: '#FFD700',
     position: 'relative',
