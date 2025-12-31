@@ -31,6 +31,11 @@ export const useTableOrders = () => {
 
     setTableOrders(prev => {
       const currentOrders = prev[table] || [];
+      console.log('🔍 [useTableOrders] addItemToTable - Estado previo:', {
+        table,
+        currentOrdersCount: currentOrders.length,
+        currentOrders: currentOrders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
+      });
       
       // Buscar si ya existe un item idéntico (mismo item, mismos extras, mismo refresco)
       const existingOrderIndex = currentOrders.findIndex(order => {
@@ -47,6 +52,11 @@ export const useTableOrders = () => {
           ...updatedOrders[existingOrderIndex],
           quantity: updatedOrders[existingOrderIndex].quantity + 1
         };
+        console.log('🔍 [useTableOrders] Item existente, incrementando cantidad:', {
+          table,
+          itemId: item.id,
+          newQuantity: updatedOrders[existingOrderIndex].quantity
+        });
         return {
           ...prev,
           [table]: updatedOrders
@@ -63,6 +73,14 @@ export const useTableOrders = () => {
           drink: drink,
           price
         };
+        console.log('🔍 [useTableOrders] Nuevo item agregado:', {
+          table,
+          orderId,
+          itemId: item.id,
+          itemName: item.nameEs,
+          quantity: 1,
+          totalOrdersAfter: currentOrders.length + 1
+        });
         return {
           ...prev,
           [table]: [...currentOrders, orderItem]
@@ -117,8 +135,16 @@ export const useTableOrders = () => {
    * Verifica si una mesa está ocupada
    */
   const isTableOccupied = (tableNumber) => {
-    const orders = getTableOrdersFromState(tableOrders, tableNumber);
-    return orders.length > 0;
+    const table = normalizeTableNumber(tableNumber);
+    const orders = getTableOrdersFromState(tableOrders, table);
+    const isOccupied = orders && orders.length > 0;
+    console.log('🔍 [useTableOrders] isTableOccupied:', {
+      tableNumber,
+      table,
+      ordersCount: orders ? orders.length : 0,
+      isOccupied
+    });
+    return isOccupied;
   };
 
   /**
@@ -138,7 +164,13 @@ export const useTableOrders = () => {
    * Obtiene los pedidos de una mesa
    */
   const getTableOrders = (tableNumber) => {
-    return getTableOrdersFromState(tableOrders, tableNumber);
+    const orders = getTableOrdersFromState(tableOrders, tableNumber);
+    console.log('🔍 [useTableOrders] getTableOrders:', {
+      tableNumber,
+      ordersCount: orders.length,
+      orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
+    });
+    return orders;
   };
 
   /**

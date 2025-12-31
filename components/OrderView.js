@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform } from 'react-native';
+import { generatePrintData, formatPrintText, filterSaladsAndDrinks, filterKitchenOrders } from '../utils/printHelpers';
+import { useAppContext } from '../contexts/AppContext';
 
 const OrderView = ({
   selectedTable,
@@ -18,6 +20,108 @@ const OrderView = ({
   onPayAll
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
+  const { currentView, setLastUpdate } = useAppContext();
+  
+  // Log para debug
+  console.log('🔍 [OrderView] Render:', {
+    selectedTable,
+    ordersCount: orders.length,
+    orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity })),
+    occupied
+  });
+  
+  // Función para enviar todo a impresión (ensaladas y bebidas) con confirmación
+  const handleSendAllToPrint = () => {
+    const saladsAndDrinks = filterSaladsAndDrinks(orders);
+    if (saladsAndDrinks.length === 0) {
+      Alert.alert('Info', 'No hay ensaladas, edamame o bebidas para imprimir');
+      return;
+    }
+    
+    const totalItems = saladsAndDrinks.reduce((sum, order) => sum + order.quantity, 0);
+    Alert.alert(
+      'Enviar a Impresión',
+      `¿Enviar ${totalItems} item(s) (ensaladas, edamame y bebidas) a impresión?\n\nMesa: ${selectedTable}`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar',
+          onPress: () => {
+            const printData = generatePrintData(selectedTable, orders, 'salads_drinks');
+            const printText = formatPrintText(printData);
+            // TODO: Implementar impresión real
+            console.log('🖨️ IMPRESIÓN (Camarero - Ensaladas/Bebidas/Edamame):');
+            console.log(printText);
+            Alert.alert('✅ Enviado', 'Ensaladas, edamame y bebidas enviadas a impresión');
+          }
+        }
+      ]
+    );
+  };
+  
+  // Función para enviar todo a cocina con confirmación
+  const handleSendAllToKitchen = () => {
+    const kitchenOrders = filterKitchenOrders(orders);
+    const saladsAndDrinks = filterSaladsAndDrinks(orders);
+    
+    if (kitchenOrders.length === 0 && saladsAndDrinks.length === 0) {
+      Alert.alert('Info', 'No hay items para enviar');
+      return;
+    }
+    
+    const totalKitchenItems = kitchenOrders.reduce((sum, order) => sum + order.quantity, 0);
+    const totalSaladsDrinks = saladsAndDrinks.reduce((sum, order) => sum + order.quantity, 0);
+    
+    Alert.alert(
+      'Enviar Comanda Completa',
+      `Mesa: ${selectedTable}\n\n` +
+      `👨‍🍳 Cocina: ${totalKitchenItems} item(s)\n` +
+      `🖨️ Impresión (Camarero): ${totalSaladsDrinks} item(s)\n\n` +
+      `¿Enviar comanda completa?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar Todo',
+          onPress: () => {
+            // Imprimir comanda completa (todo junto)
+            const allOrdersData = generatePrintData(selectedTable, orders, 'all');
+            const allOrdersText = formatPrintText(allOrdersData);
+            
+            // Imprimir solo items de cocina
+            if (kitchenOrders.length > 0) {
+              const kitchenData = generatePrintData(selectedTable, kitchenOrders, 'kitchen');
+              const kitchenText = formatPrintText(kitchenData);
+              console.log('👨‍🍳 COMANDA COCINA:');
+              console.log(kitchenText);
+            }
+            
+            // Imprimir solo items de camarero
+            if (saladsAndDrinks.length > 0) {
+              const saladsData = generatePrintData(selectedTable, saladsAndDrinks, 'salads_drinks');
+              const saladsText = formatPrintText(saladsData);
+              console.log('🖨️ COMANDA CAMARERO (Impresión):');
+              console.log(saladsText);
+            }
+            
+            // Comanda completa (para referencia)
+            console.log('📋 COMANDA COMPLETA (Referencia):');
+            console.log(allOrdersText);
+            
+            Alert.alert('✅ Enviado', 
+              `Comanda enviada:\n` +
+              `👨‍🍳 Cocina: ${totalKitchenItems} item(s)\n` +
+              `🖨️ Impresión: ${totalSaladsDrinks} item(s)`
+            );
+            
+            // Actualizar el contexto para notificar a la vista de cocina
+            if (setLastUpdate) {
+              setLastUpdate(Date.now());
+            }
+          }
+        }
+      ]
+    );
+  };
 
   if (!selectedTable) {
     return null;
@@ -87,14 +191,33 @@ const OrderView = ({
         </View>
       </View>
 
+      {(() => {
+        console.log('🔍 [OrderView] Renderizando lista de items:', {
+          ordersLength: orders.length,
+          orders: orders.map(o => ({ orderId: o.orderId, name: o.item.nameEs, quantity: o.quantity }))
+        });
+        return null;
+      })()}
+      
       {orders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No hay pedidos en esta mesa</Text>
         </View>
       ) : (
-        <ScrollView style={styles.itemsContainer}>
+        <ScrollView 
+          style={styles.itemsContainer}
+          contentContainerStyle={styles.itemsContainerContent}
+          nestedScrollEnabled={true}
+        >
           {orders.map((order) => {
             const isSelected = selectedItems.includes(order.orderId);
+            console.log('🔍 [OrderView] Renderizando item:', {
+              orderId: order.orderId,
+              itemName: order.item.nameEs,
+              quantity: order.quantity,
+              hasItem: !!order.item,
+              hasName: !!order.item?.nameEs
+            });
             return (
               <View key={order.orderId} style={[
                 styles.orderItem,
@@ -114,45 +237,45 @@ const OrderView = ({
                   </TouchableOpacity>
                   <View style={styles.orderItemContent}>
                     <View style={styles.orderItemHeader}>
-                    <View style={styles.orderItemInfo}>
-                      <Text style={styles.orderItemName}>{order.item.nameEs}</Text>
-                      {order.item.nameEn && (
-                        <Text style={styles.orderItemNameEn}>{order.item.nameEn}</Text>
-                      )}
-                      {order.extras.length > 0 && (
-                        <Text style={styles.orderItemExtras}>
-                          Extras: {order.extras.join(', ')}
-                        </Text>
-                      )}
-                      {order.drink && (
-                        <Text style={styles.orderItemDrink}>
-                          {order.drink}
-                        </Text>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => onRemoveItem(selectedTable, order.orderId)}
-                    >
-                      <Text style={styles.removeButtonText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.orderItemFooter}>
-                    <View style={styles.quantityControls}>
+                      <View style={styles.orderItemInfo}>
+                        <Text style={styles.orderItemName}>{order.item.nameEs}</Text>
+                        {order.item.nameEn ? (
+                          <Text style={styles.orderItemNameEn}>{order.item.nameEn}</Text>
+                        ) : null}
+                        {order.extras && order.extras.length > 0 ? (
+                          <Text style={styles.orderItemExtras}>
+                            Extras: {order.extras.join(', ')}
+                          </Text>
+                        ) : null}
+                        {order.drink ? (
+                          <Text style={styles.orderItemDrink}>
+                            {order.drink}
+                          </Text>
+                        ) : null}
+                      </View>
                       <TouchableOpacity
-                        style={styles.quantityButton}
-                        onPress={() => onUpdateQuantity(selectedTable, order.orderId, order.quantity - 1)}
+                        style={styles.removeButton}
+                        onPress={() => onRemoveItem(selectedTable, order.orderId)}
                       >
-                        <Text style={styles.quantityButtonText}>−</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.quantityText}>{order.quantity}</Text>
-                      <TouchableOpacity
-                        style={styles.quantityButton}
-                        onPress={() => onUpdateQuantity(selectedTable, order.orderId, order.quantity + 1)}
-                      >
-                        <Text style={styles.quantityButtonText}>+</Text>
+                        <Text style={styles.removeButtonText}>✕</Text>
                       </TouchableOpacity>
                     </View>
+                    <View style={styles.orderItemFooter}>
+                      <View style={styles.quantityControls}>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => onUpdateQuantity(selectedTable, order.orderId, order.quantity - 1)}
+                        >
+                          <Text style={styles.quantityButtonText}>−</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.quantityText}>{order.quantity}</Text>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => onUpdateQuantity(selectedTable, order.orderId, order.quantity + 1)}
+                        >
+                          <Text style={styles.quantityButtonText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
                       <Text style={styles.orderItemPrice}>
                         {(order.price * order.quantity).toFixed(2)}€
                       </Text>
@@ -235,6 +358,28 @@ const OrderView = ({
               <Text style={styles.payButtonText}>Pagar Todo</Text>
             </TouchableOpacity>
           </View>
+          
+          {/* Botones de envío solo para camarero */}
+          {currentView === 'waiter' && occupied && orders.length > 0 && (
+            <View style={styles.printButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.printButton, styles.printSaladsButton]}
+                onPress={handleSendAllToPrint}
+              >
+                <Text style={styles.printButtonText}>
+                  🖨️ Enviar Ensaladas/Bebidas a Impresión
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.printButton, styles.printKitchenButton]}
+                onPress={handleSendAllToKitchen}
+              >
+                <Text style={styles.printButtonText}>
+                  📋 Enviar Comanda Completa
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </>
       )}
     </View>
@@ -258,7 +403,6 @@ const styles = StyleSheet.create({
       shadowRadius: 4,
       elevation: 3,
     }),
-    maxHeight: 400,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
@@ -320,7 +464,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   itemsContainer: {
-    maxHeight: 250,
+    maxHeight: 300,
+    flexGrow: 0,
+  },
+  itemsContainerContent: {
+    paddingBottom: 10,
   },
   orderItem: {
     backgroundColor: '#3A3A3A',
@@ -550,6 +698,32 @@ const styles = StyleSheet.create({
   payButtonText: {
     color: '#FFF',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  printButtonsContainer: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 2,
+    borderTopColor: '#FFD700',
+  },
+  printButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 2,
+  },
+  printSaladsButton: {
+    backgroundColor: '#90CAF9',
+    borderColor: '#64B5F6',
+  },
+  printKitchenButton: {
+    backgroundColor: '#FFA500',
+    borderColor: '#FF8C00',
+  },
+  printButtonText: {
+    color: '#1A1A1A',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });
