@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
+import { logger } from '../utils/logger';
 import ClientTicket from './ClientTicket';
 
 const ClientView = () => {
@@ -24,10 +25,9 @@ const ClientView = () => {
   const activeOrders = useMemo(() => {
     if (!selectedTable) return [];
     const orders = getTableOrders(selectedTable);
-    console.log('🔍 [ClientView] activeOrders:', {
+    logger.debug('[ClientView] activeOrders:', {
       selectedTable,
-      ordersCount: orders.length,
-      orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
+      ordersCount: orders.length
     });
     return orders;
   }, [selectedTable, tableOrders, getTableOrders]);
@@ -36,10 +36,9 @@ const ClientView = () => {
   const history = useMemo(() => {
     if (!selectedTable) return [];
     const hist = getTableHistory(selectedTable) || [];
-    console.log('🔍 [ClientView] history:', {
+    logger.debug('[ClientView] history:', {
       selectedTable,
-      historyCount: hist.length,
-      lastPayment: hist.length > 0 ? hist[hist.length - 1] : null
+      historyCount: hist.length
     });
     return hist;
   }, [selectedTable, tableOrders, getTableHistory]);

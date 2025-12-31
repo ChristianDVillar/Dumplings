@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { arraysEqual, getTotalPrice, normalizeTableNumber, getTableOrdersFromState } from '../utils/helpers';
+import { logger } from '../utils/logger';
 
 const TableOrdersContext = createContext();
 

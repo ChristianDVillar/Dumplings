@@ -71,13 +71,13 @@ export const filterMenu = (menuData, searchQuery) => {
  * Genera el array de mesas disponibles
  */
 export const generateTables = () => {
-  const regularTables = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
+  const { TABLE_CONFIG } = require('./constants');
   const takeawayTables = [];
-  for (let i = 200; i <= 240; i++) {
+  for (let i = TABLE_CONFIG.TAKEAWAY_START; i <= TABLE_CONFIG.TAKEAWAY_END; i++) {
     takeawayTables.push(i);
   }
   return {
-    regular: regularTables,
+    regular: TABLE_CONFIG.REGULAR,
     takeaway: takeawayTables
   };
 };

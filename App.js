@@ -25,15 +25,14 @@ import Footer from './components/Footer';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { TableOrdersProvider, useTableOrdersContext } from './contexts/TableOrdersContext';
 import { MenuProvider, useMenuContext } from './contexts/MenuContext';
-import { shouldAutoPrint, generatePrintData, formatPrintText, filterKitchenOrders } from './utils/printHelpers';
-import { getTotalPrice } from './utils/helpers';
+import { useMenuHandlers } from './hooks/useMenuHandlers';
+import { useOrderHandlers } from './hooks/useOrderHandlers';
+import { logger } from './utils/logger';
 
 // Componente principal de la aplicación
 function AppContent() {
   // Estados
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedExtras, setSelectedExtras] = useState({});
-  const [selectedDrink, setSelectedDrink] = useState({});
   const [selectedTable, setSelectedTable] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('tables'); // 'tables' o 'menu'
   const [showOrderView, setShowOrderView] = useState(false);
@@ -66,27 +65,26 @@ function AppContent() {
   const [showChangeTableModal, setShowChangeTableModal] = useState(false);
   const [showDiscountCalculator, setShowDiscountCalculator] = useState(false);
 
-  // Obtener datos del pedido actual (usando useMemo para actualización reactiva)
+  // Hooks personalizados para manejar menú y pedidos
   // IMPORTANTE: Todos los hooks deben estar antes de los returns condicionales
-  const currentOrders = useMemo(() => {
-    if (!selectedTable) {
-      console.log('🔍 [App] currentOrders: No hay mesa seleccionada');
-      return [];
-    }
-    const orders = getTableOrders(selectedTable);
-    console.log('🔍 [App] currentOrders:', {
-      selectedTable,
-      ordersCount: orders.length,
-      orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
-    });
-    return orders;
-  }, [selectedTable, tableOrders, getTableOrders]);
-  
-  const currentTotal = selectedTable ? getTableTotal(selectedTable) : 0;
-  const currentDiscount = selectedTable ? getTableDiscount(selectedTable) : 0;
-  const currentTotalWithDiscount = selectedTable ? getTableTotalWithDiscount(selectedTable) : 0;
-  const currentOccupied = selectedTable ? isTableOccupied(selectedTable) : false;
-  const historyTotal = selectedTable ? getTableHistoryTotal(selectedTable) : 0;
+  const menuHandlers = useMenuHandlers(selectedTable, addItemToTable, setShowOrderView);
+  const {
+    currentOrders,
+    currentTotal,
+    currentDiscount,
+    currentTotalWithDiscount,
+    currentOccupied,
+    historyTotal
+  } = useOrderHandlers(
+    selectedTable,
+    tableOrders,
+    getTableOrders,
+    getTableTotal,
+    getTableDiscount,
+    getTableTotalWithDiscount,
+    isTableOccupied,
+    getTableHistoryTotal
+  );
 
   // Si no está autenticado, mostrar login
   if (!isAuthenticated) {
@@ -125,121 +123,6 @@ function AppContent() {
     return success;
   };
 
-  // Función para manejar impresión automática
-  const handleAutoPrint = (item, drink, tableNumber) => {
-    // Crear un pedido temporal solo con el item recién agregado
-    const extras = selectedExtras[item.id] || [];
-    const tempOrder = {
-      orderId: Date.now(),
-      id: item.id,
-      item: item,
-      quantity: 1,
-      extras: extras,
-      drink: drink,
-      price: getTotalPrice(item, { [item.id]: extras })
-    };
-    
-    if (shouldAutoPrint(item, drink)) {
-      // Es ensalada, edamame o bebida -> imprimir automáticamente para camarero
-      const printData = generatePrintData(tableNumber, [tempOrder], 'salads_drinks');
-      const printText = formatPrintText(printData);
-      
-      // TODO: Implementar impresión real aquí
-      console.log('🖨️ IMPRESIÓN AUTOMÁTICA (Camarero - Ensalada/Bebida/Edamame):');
-      console.log(printText);
-    } else {
-      // Es otro tipo de item -> enviar comanda a cocina automáticamente
-      const printData = generatePrintData(tableNumber, [tempOrder], 'kitchen');
-      const printText = formatPrintText(printData);
-      
-      // TODO: Implementar sincronización con cocina aquí
-      console.log('👨‍🍳 COMANDA AUTOMÁTICA (Cocina):');
-      console.log(printText);
-      
-      // Actualizar el contexto para notificar a la vista de cocina
-      if (setLastUpdate) {
-        setLastUpdate(Date.now());
-      }
-    }
-  };
-
-  // Funciones de manejo de extras
-  const toggleExtra = (itemId, extra) => {
-    setSelectedExtras(prev => {
-      const current = prev[itemId] || [];
-      const newExtras = current.includes(extra)
-        ? current.filter(e => e !== extra)
-        : [...current, extra];
-      
-      return {
-        ...prev,
-        [itemId]: newExtras.length > 0 ? newExtras : undefined
-      };
-    });
-  };
-
-  // Funciones de manejo de refrescos
-  const handleSelectDrink = (itemId, drink) => {
-    setSelectedDrink(prev => ({
-      ...prev,
-      [itemId]: drink
-    }));
-  };
-
-  const handleAddDrink = (item, drink) => {
-    if (selectedTable) {
-      const extras = selectedExtras[item.id] || [];
-      addItemToTable(selectedTable, item, { [item.id]: extras }, drink);
-      
-      // Mostrar automáticamente la vista de pedido
-      setShowOrderView(true);
-      
-      // Ya no se imprime automáticamente - se hace con botón de confirmación
-    } else {
-      alert('Por favor, selecciona una mesa primero');
-    }
-  };
-
-  // Función para agregar item
-  const handleAddItem = (item) => {
-    if (!selectedTable) {
-      alert('Por favor, selecciona una mesa primero');
-      return;
-    }
-
-    const drink = selectedDrink[item.id] || null;
-    console.log('🔍 [App] handleAddItem:', {
-      selectedTable,
-      itemId: item.id,
-      itemName: item.nameEs,
-      drink,
-      extras: selectedExtras[item.id]
-    });
-    
-    addItemToTable(selectedTable, item, selectedExtras, drink);
-
-    // Mostrar automáticamente la vista de pedido cuando se agrega un item
-    setShowOrderView(true);
-    
-    console.log('🔍 [App] Después de addItemToTable, showOrderView:', true);
-
-    // Limpiar selecciones después de agregar (excepto refrescos)
-    setSelectedExtras(prev => {
-      const newState = { ...prev };
-      delete newState[item.id];
-      return newState;
-    });
-    
-    if (item.id !== 93) {
-      setSelectedDrink(prev => {
-        const newState = { ...prev };
-        delete newState[item.id];
-        return newState;
-      });
-    }
-
-    // Ya no se imprime automáticamente - se hace con botón de confirmación
-  };
 
   // Manejar selección de mesa
   const handleSelectTable = (table) => {
