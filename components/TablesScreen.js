@@ -4,86 +4,105 @@ import { generateTables, groupTablesInRows } from '../utils/helpers';
 
 const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
   const tables = generateTables();
+  const [showRegular, setShowRegular] = useState(true); // Por defecto mostrar mesas regulares
+
+  const toggleView = () => {
+    setShowRegular(!showRegular);
+  };
 
   return (
     <View style={styles.container}>
-      {/* Título */}
-      <Text style={styles.title}>Selecciona una Mesa</Text>
+      {/* Título y Botón de Cambiar Vista */}
+      <View style={styles.headerSection}>
+        <Text style={styles.title}>
+          {showRegular ? 'Mesas Regulares' : 'Para Llevar'}
+        </Text>
+        <TouchableOpacity
+          style={styles.toggleButton}
+          onPress={toggleView}
+        >
+          <Text style={styles.toggleButtonText}>
+            Mesas
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Mesas Regulares */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mesas Regulares</Text>
-        <ScrollView 
-          showsVerticalScrollIndicator={true}
-          style={styles.regularScroll}
-        >
-          {groupTablesInRows(tables.regular, 10).map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.regularRow}>
-              {row.map((table) => (
-                <TouchableOpacity
-                  key={table}
-                  style={[
-                    styles.tableCard,
-                    selectedTable === table && styles.tableCardSelected,
-                    isTableOccupied(table) && styles.tableCardOccupied
-                  ]}
-                  onPress={() => onSelectTable(table)}
-                >
-                  <Text style={[
-                    styles.tableNumber,
-                    selectedTable === table && styles.tableNumberSelected
-                  ]}>
-                    {table}
-                  </Text>
-                  {isTableOccupied(table) && (
-                    <View style={styles.occupiedIndicator}>
-                      <Text style={styles.occupiedText}>●</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+      {showRegular && (
+        <View style={styles.section}>
+          <ScrollView 
+            showsVerticalScrollIndicator={true}
+            style={styles.tablesScroll}
+          >
+            {groupTablesInRows(tables.regular, 10).map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.tableRow}>
+                {row.map((table) => (
+                  <TouchableOpacity
+                    key={table}
+                    style={[
+                      styles.tableCard,
+                      selectedTable === table && styles.tableCardSelected,
+                      isTableOccupied(table) && styles.tableCardOccupied
+                    ]}
+                    onPress={() => onSelectTable(table)}
+                  >
+                    <Text style={[
+                      styles.tableNumber,
+                      selectedTable === table && styles.tableNumberSelected
+                    ]}>
+                      {table}
+                    </Text>
+                    {isTableOccupied(table) && (
+                      <View style={styles.occupiedIndicator}>
+                        <Text style={styles.occupiedText}>●</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Para Llevar */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Para Llevar</Text>
-        <ScrollView 
-          showsVerticalScrollIndicator={true}
-          style={styles.takeawayScroll}
-        >
-          {groupTablesInRows(tables.takeaway, 10).map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.takeawayRow}>
-              {row.map((table) => (
-                <TouchableOpacity
-                  key={table}
-                  style={[
-                    styles.tableCard,
-                    styles.tableCardTakeaway,
-                    selectedTable === table && styles.tableCardSelected,
-                    isTableOccupied(table) && styles.tableCardOccupied
-                  ]}
-                  onPress={() => onSelectTable(table)}
-                >
-                  <Text style={[
-                    styles.tableNumber,
-                    selectedTable === table && styles.tableNumberSelected
-                  ]}>
-                    {table}
-                  </Text>
-                  {isTableOccupied(table) && (
-                    <View style={styles.occupiedIndicator}>
-                      <Text style={styles.occupiedText}>●</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+      {!showRegular && (
+        <View style={styles.section}>
+          <ScrollView 
+            showsVerticalScrollIndicator={true}
+            style={styles.tablesScroll}
+          >
+            {groupTablesInRows(tables.takeaway, 10).map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.tableRow}>
+                {row.map((table) => (
+                  <TouchableOpacity
+                    key={table}
+                    style={[
+                      styles.tableCard,
+                      styles.tableCardTakeaway,
+                      selectedTable === table && styles.tableCardSelected,
+                      isTableOccupied(table) && styles.tableCardOccupied
+                    ]}
+                    onPress={() => onSelectTable(table)}
+                  >
+                    <Text style={[
+                      styles.tableNumber,
+                      selectedTable === table && styles.tableNumberSelected
+                    ]}>
+                      {table}
+                    </Text>
+                    {isTableOccupied(table) && (
+                      <View style={styles.occupiedIndicator}>
+                        <Text style={styles.occupiedText}>●</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 };
@@ -94,36 +113,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A', // Fondo oscuro basado en colores.jpeg
     padding: 20,
   },
+  headerSection: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFD700', // Amarillo brillante basado en colores.jpeg
+    color: '#FFD700',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 15,
+  },
+  toggleButton: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FFA500',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
+  },
+  toggleButtonText: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   section: {
+    flex: 1,
     marginBottom: 25,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 15,
-    paddingLeft: 5,
+  tablesScroll: {
+    flex: 1,
   },
-  regularScroll: {
-    maxHeight: 200,
-  },
-  regularRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-    paddingHorizontal: 5,
-  },
-  takeawayScroll: {
-    maxHeight: 400,
-  },
-  takeawayRow: {
+  tableRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 12,

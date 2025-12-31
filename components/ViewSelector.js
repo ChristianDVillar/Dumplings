@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAppContext } from '../contexts/AppContext';
 
 const ViewSelector = () => {
-  const { currentView, switchView } = useAppContext();
+  const { currentView, switchView, userRole, logout } = useAppContext();
 
   return (
     <View style={styles.container}>
@@ -66,6 +66,15 @@ const ViewSelector = () => {
           👤 Cliente
         </Text>
       </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={logout}
+      >
+        <Text style={styles.logoutButtonText}>
+          Salir
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -98,6 +107,18 @@ const styles = StyleSheet.create({
   },
   buttonTextActive: {
     color: '#1A1A1A',
+  },
+  logoutButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 3,
+    backgroundColor: '#F44336',
+  },
+  logoutButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
   },
 });
 
