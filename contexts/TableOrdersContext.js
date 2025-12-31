@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
 import { arraysEqual, getTotalPrice, normalizeTableNumber, getTableOrdersFromState } from '../utils/helpers';
-import { logger } from '../utils/logger';
 
 const TableOrdersContext = createContext();
 
@@ -16,6 +15,8 @@ export const TableOrdersProvider = ({ children }) => {
   const [tableOrders, setTableOrders] = useState({});
   const [tableHistory, setTableHistory] = useState({});
   const [tableDiscounts, setTableDiscounts] = useState({});
+  const [tableKitchenTimestamps, setTableKitchenTimestamps] = useState({}); // Array de timestamps de cuando se enviaron comandas a cocina (múltiples timers por mesa)
+  const [completedKitchenOrders, setCompletedKitchenOrders] = useState({}); // Comandas marcadas como completadas: { tableNumber: { timestamp: orderIds[] } }
 
   /**
    * Agrega un item al pedido de una mesa
@@ -280,10 +281,148 @@ export const TableOrdersProvider = ({ children }) => {
     return history.reduce((sum, payment) => sum + payment.total, 0);
   };
 
+  /**
+   * Establece el timestamp de cuando se envió una comanda a cocina
+   * Agrega un nuevo timestamp al array en lugar de reemplazar el anterior.
+   * Esto permite mantener múltiples timers por mesa (uno por cada envío).
+   */
+  const setKitchenTimestamp = (tableNumber) => {
+    const table = normalizeTableNumber(tableNumber);
+    const timestamp = Date.now();
+    setTableKitchenTimestamps(prev => {
+      const existingTimestamps = prev[table] || [];
+      return {
+        ...prev,
+        [table]: [...existingTimestamps, timestamp] // Agrega nuevo timestamp sin eliminar los anteriores
+      };
+    });
+  };
+
+  /**
+   * Obtiene el timestamp más reciente de cuando se envió una comanda a cocina
+   * Retorna el último timestamp del array (el más reciente)
+   */
+  const getKitchenTimestamp = (tableNumber) => {
+    const table = normalizeTableNumber(tableNumber);
+    const timestamps = tableKitchenTimestamps[table] || tableKitchenTimestamps[String(table)] || [];
+    // Retorna el timestamp más reciente (último del array)
+    return timestamps.length > 0 ? timestamps[timestamps.length - 1] : null;
+  };
+
+  /**
+   * Obtiene todos los timestamps de una mesa (para mostrar múltiples timers si es necesario)
+   */
+  const getAllKitchenTimestamps = (tableNumber) => {
+    const table = normalizeTableNumber(tableNumber);
+    return tableKitchenTimestamps[table] || tableKitchenTimestamps[String(table)] || [];
+  };
+
+  /**
+   * Marca una comanda como completada (para el rol de cocina)
+   * @param {number} tableNumber - Número de mesa
+   * @param {number} timestamp - Timestamp de la comanda a marcar como completada
+   */
+  const markKitchenOrderCompleted = (tableNumber, timestamp) => {
+    const table = normalizeTableNumber(tableNumber);
+    console.log('🟡 [TableOrdersContext] markKitchenOrderCompleted INICIO:', { 
+      tableNumber, 
+      normalizedTable: table, 
+      timestamp, 
+      timestampType: typeof timestamp,
+      timestampString: String(timestamp),
+      completedKitchenOrdersBefore: completedKitchenOrders
+    });
+    
+    setCompletedKitchenOrders(prev => {
+      const tableCompleted = prev[table] || prev[String(table)] || {};
+      console.log('🟡 [TableOrdersContext] Estado previo:', { 
+        prev, 
+        tableCompleted, 
+        table,
+        stringTable: String(table),
+        hasTable: !!prev[table],
+        hasStringTable: !!prev[String(table)]
+      });
+      
+      const newState = {
+        ...prev,
+        [table]: {
+          ...tableCompleted,
+          [timestamp]: true,
+          [String(timestamp)]: true // Agregar también como string por si acaso
+        },
+        [String(table)]: { // También guardar con string key
+          ...(prev[String(table)] || {}),
+          [timestamp]: true,
+          [String(timestamp)]: true
+        }
+      };
+      
+      console.log('🟡 [TableOrdersContext] Nuevo estado calculado:', newState);
+      console.log('🟡 [TableOrdersContext] Verificando nuevo estado para mesa:', {
+        table,
+        stringTable: String(table),
+        newStateTable: newState[table],
+        newStateStringTable: newState[String(table)]
+      });
+      
+      return newState;
+    });
+    
+    // Verificar después de un pequeño delay
+    setTimeout(() => {
+      console.log('🟡 [TableOrdersContext] Estado después de setState (con delay):', completedKitchenOrders);
+    }, 100);
+  };
+
+  /**
+   * Verifica si una comanda está marcada como completada
+   * @param {number} tableNumber - Número de mesa
+   * @param {number} timestamp - Timestamp de la comanda
+   * @returns {boolean} - true si está completada, false si no
+   */
+  const isKitchenOrderCompleted = (tableNumber, timestamp) => {
+    const table = normalizeTableNumber(tableNumber);
+    // Intentar con número y string para ambas claves
+    const tableCompletedNum = completedKitchenOrders[table] || {};
+    const tableCompletedStr = completedKitchenOrders[String(table)] || {};
+    const tableCompleted = { ...tableCompletedNum, ...tableCompletedStr };
+    
+    const isCompleted = tableCompleted[timestamp] === true || 
+                       tableCompleted[String(timestamp)] === true ||
+                       tableCompletedNum[timestamp] === true ||
+                       tableCompletedNum[String(timestamp)] === true ||
+                       tableCompletedStr[timestamp] === true ||
+                       tableCompletedStr[String(timestamp)] === true;
+    
+    console.log('🟠 [TableOrdersContext] isKitchenOrderCompleted:', {
+      tableNumber,
+      normalizedTable: table,
+      timestamp,
+      timestampType: typeof timestamp,
+      tableCompletedNum,
+      tableCompletedStr,
+      tableCompleted,
+      isCompleted,
+      completedKitchenOrdersKeys: Object.keys(completedKitchenOrders)
+    });
+    
+    return isCompleted;
+  };
+
+  /**
+   * Obtiene todas las comandas completadas de una mesa
+   */
+  const getCompletedKitchenOrders = (tableNumber) => {
+    const table = normalizeTableNumber(tableNumber);
+    return completedKitchenOrders[table] || completedKitchenOrders[String(table)] || {};
+  };
+
   return (
     <TableOrdersContext.Provider
       value={{
         tableOrders,
+        tableHistory,
         addItemToTable,
         removeItemFromTable,
         updateItemQuantity,
@@ -297,7 +436,15 @@ export const TableOrdersProvider = ({ children }) => {
         getTableTotalWithDiscount,
         payTableItems,
         getTableHistory,
-        getTableHistoryTotal
+        getTableHistoryTotal,
+        setKitchenTimestamp,
+        getKitchenTimestamp,
+        getAllKitchenTimestamps,
+        tableKitchenTimestamps,
+        markKitchenOrderCompleted,
+        isKitchenOrderCompleted,
+        getCompletedKitchenOrders,
+        completedKitchenOrders
       }}
     >
       {children}

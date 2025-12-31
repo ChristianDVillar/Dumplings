@@ -1,64 +1,81 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
 import { useAppContext } from '../contexts/AppContext';
 import { filterKitchenOrders } from '../utils/printHelpers';
+import { getElapsedTimeWithColor } from '../utils/timeHelpers';
 import ComandaTicket from './ComandaTicket';
 
 const KitchenView = () => {
-  const { tableOrders, getTableOrders, isTableOccupied } = useTableOrdersContext();
+  const { tableOrders, getTableOrders, isTableOccupied, getKitchenTimestamp, getAllKitchenTimestamps, tableKitchenTimestamps } = useTableOrdersContext();
   const { lastUpdate } = useAppContext();
   const [selectedTable, setSelectedTable] = useState(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const tables = generateTables();
   const allTables = [...tables.regular, ...tables.takeaway];
 
-  // Obtener todas las mesas con pedidos
+  // Obtener todas las mesas con pedidos y sus timestamps
   const occupiedTables = useMemo(() => {
-    console.log('🔍 [KitchenView] occupiedTables - Estado:', {
-      tableOrders: tableOrders,
-      tableOrdersKeys: Object.keys(tableOrders),
-      tableOrdersValues: Object.values(tableOrders).map(arr => arr?.length || 0),
-      allTablesCount: allTables.length
-    });
-    
     const occupied = allTables.filter(table => {
       const isOccupied = isTableOccupied(table);
-      if (isOccupied) {
-        console.log('🔍 [KitchenView] Mesa ocupada encontrada:', table);
-      }
       return isOccupied;
     });
     
-    console.log('🔍 [KitchenView] occupiedTables - Resultado:', {
-      total: allTables.length,
-      occupied: occupied.length,
-      occupiedTables: occupied,
-      lastUpdate
+    // Agregar información de tiempo para cada mesa
+    return occupied.map(table => {
+      const allTimestamps = getAllKitchenTimestamps(table);
+      // Mostrar el timer más reciente en la tarjeta de mesa
+      const latestTimestamp = allTimestamps.length > 0 ? allTimestamps[allTimestamps.length - 1] : null;
+      const elapsedTime = latestTimestamp ? getElapsedTimeWithColor(latestTimestamp) : null;
+      return {
+        number: table,
+        timestamp: latestTimestamp,
+        allTimestamps, // Guardar todos los timestamps para uso futuro
+        elapsedTime,
+        timerCount: allTimestamps.length // Número de timers activos
+      };
     });
-    return occupied;
-  }, [allTables, tableOrders, lastUpdate, isTableOccupied]);
+  }, [allTables, tableOrders, lastUpdate, isTableOccupied, getKitchenTimestamp, getAllKitchenTimestamps, currentTime, tableKitchenTimestamps]);
 
   // Obtener pedidos de la mesa seleccionada - SOLO items de cocina (filtrados)
   const tableOrdersList = useMemo(() => {
     if (!selectedTable) {
-      console.log('🔍 [KitchenView] tableOrdersList: No hay mesa seleccionada');
       return [];
     }
     const allOrders = getTableOrders(selectedTable);
     // Filtrar solo los items que van a cocina
     const kitchenOrders = filterKitchenOrders(allOrders);
-    console.log('🔍 [KitchenView] tableOrdersList (FILTRADO PARA COCINA):', {
-      selectedTable,
-      allOrdersCount: allOrders.length,
-      kitchenOrdersCount: kitchenOrders.length,
-      allOrders: allOrders.map(o => ({ id: o.item.id, name: o.item.nameEs, category: o.item.category })),
-      kitchenOrders: kitchenOrders.map(o => ({ id: o.item.id, name: o.item.nameEs, category: o.item.category })),
-      lastUpdate
-    });
     return kitchenOrders;
   }, [selectedTable, tableOrders, lastUpdate, getTableOrders]);
 
+  // Actualizar el tiempo cada segundo para mostrar el tiempo transcurrido
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Obtener todos los timers para la mesa seleccionada
+  const allElapsedTimes = useMemo(() => {
+    if (!selectedTable) return [];
+    const allTimestamps = getAllKitchenTimestamps(selectedTable);
+    return allTimestamps.map(timestamp => ({
+      timestamp,
+      elapsed: getElapsedTimeWithColor(timestamp)
+    }));
+  }, [selectedTable, getAllKitchenTimestamps, currentTime, tableKitchenTimestamps]);
+
+  // Obtener el tiempo transcurrido más reciente para la mesa seleccionada (para mostrar en el header)
+  const latestElapsedTime = useMemo(() => {
+    if (!selectedTable) return null;
+    const timestamp = getKitchenTimestamp(selectedTable);
+    if (timestamp) {
+      return getElapsedTimeWithColor(timestamp);
+    }
+    return { text: 'Sin enviar', color: '#F44336' };
+  }, [selectedTable, getKitchenTimestamp, currentTime, tableKitchenTimestamps]);
 
   return (
     <View style={styles.container}>
@@ -82,22 +99,33 @@ const KitchenView = () => {
             showsHorizontalScrollIndicator={false}
             style={styles.tablesScroll}
           >
-            {occupiedTables.map((table) => (
+            {occupiedTables.map((tableData) => (
               <TouchableOpacity
-                key={table}
+                key={tableData.number}
                 style={[
                   styles.tableCard,
-                  selectedTable === table && styles.tableCardSelected
+                  selectedTable === tableData.number && styles.tableCardSelected
                 ]}
-                onPress={() => setSelectedTable(table)}
+                onPress={() => setSelectedTable(tableData.number)}
               >
                 <Text style={[
                   styles.tableNumber,
-                  selectedTable === table && styles.tableNumberSelected
+                  selectedTable === tableData.number && styles.tableNumberSelected
                 ]}>
-                  {table}
+                  {tableData.number}
                 </Text>
                 <View style={styles.occupiedDot} />
+                {/* Timer en la tarjeta de mesa - siempre visible */}
+                <View style={styles.tableTimer}>
+                  <Text style={styles.tableTimerText}>
+                    {tableData.elapsedTime ? tableData.elapsedTime.text : 'Sin enviar'}
+                  </Text>
+                  {tableData.timerCount > 1 && (
+                    <Text style={styles.tableTimerCount}>
+                      +{tableData.timerCount - 1}
+                    </Text>
+                  )}
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -106,15 +134,34 @@ const KitchenView = () => {
 
       {/* Comanda de la mesa seleccionada */}
       {selectedTable && tableOrdersList.length > 0 && (
-        <ScrollView style={styles.ticketContainer}>
-          <ComandaTicket
-            tableNumber={selectedTable}
-            orders={tableOrdersList}
-            type="kitchen"
-            date={new Date().toISOString()}
-            showPrices={false}
-          />
-        </ScrollView>
+        <View style={styles.ticketSection}>
+          <View style={styles.comandaHeader}>
+            <View style={styles.comandaHeaderLeft}>
+              <Text style={styles.comandaTitle}>Comanda Mesa {selectedTable}</Text>
+            </View>
+            {/* Timer al costado de la comanda - siempre visible */}
+            <View style={styles.comandaTimer}>
+              <Text style={styles.comandaTimerLabel}>Tiempo:</Text>
+              <Text style={[styles.comandaTimerValue, latestElapsedTime && { color: latestElapsedTime.color }]}>
+                {latestElapsedTime ? latestElapsedTime.text : 'Sin enviar'}
+              </Text>
+              {allElapsedTimes.length > 1 && (
+                <Text style={styles.comandaTimerCount}>
+                  ({allElapsedTimes.length} envíos)
+                </Text>
+              )}
+            </View>
+          </View>
+          <ScrollView style={styles.ticketContainer}>
+            <ComandaTicket
+              tableNumber={selectedTable}
+              orders={tableOrdersList}
+              type="kitchen"
+              date={new Date().toISOString()}
+              showPrices={false}
+            />
+          </ScrollView>
+        </View>
       )}
 
       {selectedTable && tableOrdersList.length === 0 && (
@@ -163,16 +210,18 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   tableCard: {
-    width: 80,
-    height: 80,
+    width: 100,
+    minHeight: 100,
     backgroundColor: '#2A2A2A',
     borderRadius: 12,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 2,
     borderColor: '#FFD700',
     position: 'relative',
+    paddingTop: 8,
+    paddingBottom: 8,
     ...(Platform.OS === 'web' ? {
       boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
     } : {
@@ -203,6 +252,26 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: '#4CAF50',
+  },
+  tableTimer: {
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#F44336',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  tableTimerText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  tableTimerCount: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginTop: 2,
   },
   ordersSection: {
     flex: 1,
@@ -311,6 +380,55 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 5,
+  },
+  ticketSection: {
+    flex: 1,
+  },
+  comandaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  comandaHeaderLeft: {
+    flex: 1,
+  },
+  comandaTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  comandaTimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F44336',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  comandaTimerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginRight: 6,
+  },
+  comandaTimerValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  comandaTimerCount: {
+    fontSize: 12,
+    fontWeight: 'normal',
+    color: '#FFD700',
+    marginLeft: 8,
   },
   ticketContainer: {
     flex: 1,

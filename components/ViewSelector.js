@@ -92,9 +92,11 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    padding: 12,
+    minHeight: 44,
+    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 3,
   },
   buttonActive: {
@@ -109,9 +111,11 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
   },
   logoutButton: {
-    padding: 12,
+    minHeight: 44,
+    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 3,
     backgroundColor: '#F44336',
   },

@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
  * Hook personalizado para manejar la lógica del menú
  * Incluye selección de extras, bebidas y agregado de items
  */
-export const useMenuHandlers = (selectedTable, addItemToTable, setShowOrderView) => {
+export const useMenuHandlers = (selectedTable, addItemToTable) => {
   const [selectedExtras, setSelectedExtras] = useState({});
   const [selectedDrink, setSelectedDrink] = useState({});
 
@@ -56,8 +56,7 @@ export const useMenuHandlers = (selectedTable, addItemToTable, setShowOrderView)
     
     addItemToTable(selectedTable, item, selectedExtras, drink);
 
-    // Mostrar automáticamente la vista de pedido
-    setShowOrderView(true);
+    // Ya no se muestra automáticamente la vista de pedido
 
     // Limpiar selecciones después de agregar (excepto refrescos)
     setSelectedExtras(prev => {
@@ -83,7 +82,7 @@ export const useMenuHandlers = (selectedTable, addItemToTable, setShowOrderView)
     if (selectedTable) {
       const extras = selectedExtras[item.id] || [];
       addItemToTable(selectedTable, item, { [item.id]: extras }, drink);
-      setShowOrderView(true);
+      // Ya no se muestra automáticamente la vista de pedido
     } else {
       alert('Por favor, selecciona una mesa primero');
     }

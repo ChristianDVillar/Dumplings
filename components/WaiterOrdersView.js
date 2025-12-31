@@ -20,11 +20,6 @@ const WaiterOrdersView = () => {
   const tableOrdersList = useMemo(() => {
     if (!selectedTable) return [];
     const allOrders = getTableOrders(selectedTable);
-    console.log('🔍 [WaiterOrdersView] tableOrdersList:', {
-      selectedTable,
-      allOrdersCount: allOrders.length,
-      orders: allOrders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
-    });
     // Mostrar TODOS los items (comanda completa para camarero)
     return allOrders;
   }, [selectedTable, tableOrders, getTableOrders]);

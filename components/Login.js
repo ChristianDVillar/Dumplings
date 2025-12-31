@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, Dimensions } from 'react-native';
+import Header from './Header';
+import Footer from './Footer';
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errorType, setErrorType] = useState(null); // 'username' o 'password'
 
   // Usuarios del sistema
   const users = {
@@ -14,24 +18,34 @@ const Login = ({ onLogin }) => {
     'general': {
       password: 'graltest',
       role: 'general'
+    },
+    'cocina': {
+      password: 'cocinatest',
+      role: 'kitchen'
     }
   };
 
   const handleLogin = () => {
+    // Limpiar errores previos
+    setErrorMessage('');
+    setErrorType(null);
+
     if (!username || !password) {
-      Alert.alert('Error', 'Por favor, ingresa usuario y contraseña');
+      setErrorMessage('Por favor, ingresa usuario y contraseña');
       return;
     }
 
     const user = users[username.toLowerCase()];
     
     if (!user) {
-      Alert.alert('Error', 'Usuario no encontrado');
+      setErrorMessage('Usuario no encontrado. Verifica el nombre de usuario.');
+      setErrorType('username');
       return;
     }
 
     if (user.password !== password) {
-      Alert.alert('Error', 'Contraseña incorrecta');
+      setErrorMessage('Contraseña incorrecta. Verifica tu contraseña.');
+      setErrorType('password');
       return;
     }
 
@@ -41,63 +55,97 @@ const Login = ({ onLogin }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.loginCard}>
-        <Text style={styles.title}>Iniciar Sesión</Text>
-        <Text style={styles.subtitle}>Sistema de Gestión de Pedidos</Text>
-        
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Usuario</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ingresa tu usuario"
-            placeholderTextColor="#999"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+      <Header />
+      <View style={styles.contentContainer}>
+        <View style={styles.loginCard}>
+          <Text style={styles.title}>Iniciar Sesión</Text>
+          <Text style={styles.subtitle}>Sistema de Gestión de Pedidos</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Usuario</Text>
+            <TextInput
+              style={[
+                styles.input,
+                errorType === 'username' && styles.inputError
+              ]}
+              placeholder="Ingresa tu usuario"
+              placeholderTextColor="#999"
+              value={username}
+              onChangeText={(text) => {
+                setUsername(text);
+                if (errorType === 'username') {
+                  setErrorMessage('');
+                  setErrorType(null);
+                }
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Contraseña</Text>
+            <TextInput
+              style={[
+                styles.input,
+                errorType === 'password' && styles.inputError
+              ]}
+              placeholder="Ingresa tu contraseña"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errorType === 'password') {
+                  setErrorMessage('');
+                  setErrorType(null);
+                }
+              }}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={handleLogin}
+          >
+            <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+          </TouchableOpacity>
+
         </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ingresa tu contraseña"
-            placeholderTextColor="#999"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={styles.loginButton}
-          onPress={handleLogin}
-        >
-          <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-        </TouchableOpacity>
-
       </View>
+      <Footer />
     </View>
   );
 };
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isMobile = SCREEN_WIDTH < 768;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1A1A1A',
+  },
+  contentContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: isMobile ? 15 : 20,
   },
   loginCard: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: isMobile ? '95%' : 400,
     backgroundColor: '#2A2A2A',
     borderRadius: 12,
-    padding: 30,
+    padding: isMobile ? 20 : 30,
     ...(Platform.OS === 'web' ? {
       boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
     } : {
@@ -174,6 +222,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FFA500',
     marginVertical: 2,
+  },
+  errorContainer: {
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+    marginBottom: 5,
+    borderWidth: 2,
+    borderColor: '#D32F2F',
+  },
+  errorText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  inputError: {
+    borderColor: '#F44336',
+    borderWidth: 2,
   },
 });
 

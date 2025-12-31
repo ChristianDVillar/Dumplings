@@ -18,20 +18,24 @@ const MenuByCategory = ({
   // Estado para rastrear qué categorías están expandidas
   const [expandedCategories, setExpandedCategories] = useState(new Set());
 
-  // Filtrar menú según búsqueda
+  // Filtrar menú según búsqueda y estado habilitado
   const filteredMenu = useMemo(() => {
+    // Primero filtrar solo items habilitados (enabled !== false)
+    let items = menuData.filter(item => item.enabled !== false);
+    
+    // Luego filtrar por búsqueda si hay query
     if (!searchQuery.trim()) {
-      return menuData;
+      return items;
     }
     const query = searchQuery.toLowerCase().trim();
-    return menuData.filter(item => {
+    return items.filter(item => {
       if (item.number && item.number.toString().includes(query)) return true;
       if (item.nameEs.toLowerCase().includes(query)) return true;
-      if (item.nameEn.toLowerCase().includes(query)) return true;
+      if (item.nameEn && item.nameEn.toLowerCase().includes(query)) return true;
       if (item.descriptionEs && item.descriptionEs.toLowerCase().includes(query)) return true;
       if (item.descriptionEn && item.descriptionEn.toLowerCase().includes(query)) return true;
       if (item.category.toLowerCase().includes(query)) return true;
-      if (item.categoryEn.toLowerCase().includes(query)) return true;
+      if (item.categoryEn && item.categoryEn.toLowerCase().includes(query)) return true;
       return false;
     });
   }, [menuData, searchQuery]);

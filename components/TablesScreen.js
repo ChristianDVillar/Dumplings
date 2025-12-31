@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native';
 import { generateTables, groupTablesInRows } from '../utils/helpers';
 
 const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
@@ -107,6 +107,9 @@ const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
   );
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isMobile = SCREEN_WIDTH < 768;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -126,8 +129,9 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     backgroundColor: '#FFD700',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    minHeight: 44,
+    paddingHorizontal: isMobile ? 16 : 20,
+    paddingVertical: isMobile ? 12 : 10,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#FFA500',
@@ -160,14 +164,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   tableCard: {
-    width: 80,
-    height: 80,
+    width: isMobile ? 70 : 80,
+    height: isMobile ? 70 : 80,
+    minWidth: 70,
+    minHeight: 70,
     backgroundColor: '#2A2A2A',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    marginBottom: 12,
+    marginRight: isMobile ? 8 : 12,
+    marginBottom: isMobile ? 8 : 12,
     ...(Platform.OS === 'web' ? {
       boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
     } : {
@@ -194,7 +200,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   tableNumber: {
-    fontSize: 24,
+    fontSize: isMobile ? 20 : 24,
     fontWeight: 'bold',
     color: '#FFD700',
   },

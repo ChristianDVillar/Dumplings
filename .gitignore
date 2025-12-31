@@ -8,4 +8,5 @@ npm-debug.*
 *.gif
 .DS_Store
 *.log
+tunnel-*.txt
 

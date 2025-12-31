@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform, Dimensions } from 'react-native';
 import { generatePrintData, formatPrintText, filterSaladsAndDrinks, filterKitchenOrders } from '../utils/printHelpers';
 import { useAppContext } from '../contexts/AppContext';
 
@@ -17,18 +17,11 @@ const OrderView = ({
   onShowChangeTable,
   onShowDiscount,
   onPayItems,
-  onPayAll
+  onPayAll,
+  setKitchenTimestamp
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const { currentView, setLastUpdate } = useAppContext();
-  
-  // Log para debug
-  console.log('🔍 [OrderView] Render:', {
-    selectedTable,
-    ordersCount: orders.length,
-    orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity })),
-    occupied
-  });
   
   // Función para enviar todo a impresión (ensaladas y bebidas) con confirmación
   const handleSendAllToPrint = () => {
@@ -59,7 +52,7 @@ const OrderView = ({
     );
   };
   
-  // Función para enviar todo a cocina con confirmación
+  // Función para enviar todo a cocina
   const handleSendAllToKitchen = () => {
     const kitchenOrders = filterKitchenOrders(orders);
     const saladsAndDrinks = filterSaladsAndDrinks(orders);
@@ -72,6 +65,60 @@ const OrderView = ({
     const totalKitchenItems = kitchenOrders.reduce((sum, order) => sum + order.quantity, 0);
     const totalSaladsDrinks = saladsAndDrinks.reduce((sum, order) => sum + order.quantity, 0);
     
+    // Guardar referencias para usar en la función
+    const tableNumber = selectedTable;
+    const kitchenOrdersRef = kitchenOrders;
+    const saladsAndDrinksRef = saladsAndDrinks;
+    
+    // Función para enviar la comanda
+    const sendCommand = () => {
+      // Imprimir comanda completa (todo junto)
+      const allOrdersData = generatePrintData(tableNumber, orders, 'all');
+      const allOrdersText = formatPrintText(allOrdersData);
+      
+      // Imprimir solo items de cocina
+      if (kitchenOrdersRef.length > 0) {
+        const kitchenData = generatePrintData(tableNumber, kitchenOrdersRef, 'kitchen');
+        const kitchenText = formatPrintText(kitchenData);
+        console.log('👨‍🍳 COMANDA COCINA:');
+        console.log(kitchenText);
+      }
+      
+      // Imprimir solo items de camarero
+      if (saladsAndDrinksRef.length > 0) {
+        const saladsData = generatePrintData(tableNumber, saladsAndDrinksRef, 'salads_drinks');
+        const saladsText = formatPrintText(saladsData);
+        console.log('🖨️ COMANDA CAMARERO (Impresión):');
+        console.log(saladsText);
+      }
+      
+      // Comanda completa (para referencia)
+      console.log('📋 COMANDA COMPLETA (Referencia):');
+      console.log(allOrdersText);
+      
+      // Actualizar el contexto para notificar a la vista de cocina
+      if (setLastUpdate) {
+        setLastUpdate(Date.now());
+      }
+      
+      // Guardar timestamp de cuando se envió a cocina (siempre actualizar, incluso si ya existe uno previo)
+      // Esto resetea el timer cada vez que se envían nuevos items
+      if (setKitchenTimestamp && (kitchenOrdersRef.length > 0 || saladsAndDrinksRef.length > 0)) {
+        setKitchenTimestamp(tableNumber);
+      }
+      
+      Alert.alert('✅ Enviado', 
+        `Comanda enviada:\n` +
+        `👨‍🍳 Cocina: ${totalKitchenItems} item(s)\n` +
+        `🖨️ Impresión: ${totalSaladsDrinks} item(s)`
+      );
+    };
+    
+    // Ejecutar directamente
+    sendCommand();
+    
+    /* 
+    // Código comentado: Alert de confirmación (descomentar si quieres confirmación)
     Alert.alert(
       'Enviar Comanda Completa',
       `Mesa: ${selectedTable}\n\n` +
@@ -79,48 +126,20 @@ const OrderView = ({
       `🖨️ Impresión (Camarero): ${totalSaladsDrinks} item(s)\n\n` +
       `¿Enviar comanda completa?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Cancelar', 
+          style: 'cancel'
+        },
         {
           text: 'Enviar Todo',
           onPress: () => {
-            // Imprimir comanda completa (todo junto)
-            const allOrdersData = generatePrintData(selectedTable, orders, 'all');
-            const allOrdersText = formatPrintText(allOrdersData);
-            
-            // Imprimir solo items de cocina
-            if (kitchenOrders.length > 0) {
-              const kitchenData = generatePrintData(selectedTable, kitchenOrders, 'kitchen');
-              const kitchenText = formatPrintText(kitchenData);
-              console.log('👨‍🍳 COMANDA COCINA:');
-              console.log(kitchenText);
-            }
-            
-            // Imprimir solo items de camarero
-            if (saladsAndDrinks.length > 0) {
-              const saladsData = generatePrintData(selectedTable, saladsAndDrinks, 'salads_drinks');
-              const saladsText = formatPrintText(saladsData);
-              console.log('🖨️ COMANDA CAMARERO (Impresión):');
-              console.log(saladsText);
-            }
-            
-            // Comanda completa (para referencia)
-            console.log('📋 COMANDA COMPLETA (Referencia):');
-            console.log(allOrdersText);
-            
-            Alert.alert('✅ Enviado', 
-              `Comanda enviada:\n` +
-              `👨‍🍳 Cocina: ${totalKitchenItems} item(s)\n` +
-              `🖨️ Impresión: ${totalSaladsDrinks} item(s)`
-            );
-            
-            // Actualizar el contexto para notificar a la vista de cocina
-            if (setLastUpdate) {
-              setLastUpdate(Date.now());
-            }
+            sendCommand();
           }
         }
-      ]
+      ],
+      { cancelable: false }
     );
+    */
   };
 
   if (!selectedTable) {
@@ -191,13 +210,6 @@ const OrderView = ({
         </View>
       </View>
 
-      {(() => {
-        console.log('🔍 [OrderView] Renderizando lista de items:', {
-          ordersLength: orders.length,
-          orders: orders.map(o => ({ orderId: o.orderId, name: o.item.nameEs, quantity: o.quantity }))
-        });
-        return null;
-      })()}
       
       {orders.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -211,13 +223,6 @@ const OrderView = ({
         >
           {orders.map((order) => {
             const isSelected = selectedItems.includes(order.orderId);
-            console.log('🔍 [OrderView] Renderizando item:', {
-              orderId: order.orderId,
-              itemName: order.item.nameEs,
-              quantity: order.quantity,
-              hasItem: !!order.item,
-              hasName: !!order.item?.nameEs
-            });
             return (
               <View key={order.orderId} style={[
                 styles.orderItem,
@@ -534,12 +539,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quantityButton: {
-    width: 30,
-    height: 30,
+    minWidth: 44,
+    minHeight: 44,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFD700',
-    borderRadius: 15,
+    borderRadius: 22,
+    padding: 8,
   },
   quantityButtonText: {
     color: '#FFF',

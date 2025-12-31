@@ -1,7 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, Dimensions } from 'react-native';
 import { getTotalPrice } from '../utils/helpers';
 import { EXTRA_OPTIONS, DRINK_OPTIONS } from '../utils/constants';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isMobile = SCREEN_WIDTH < 768;
 
 const MenuItem = ({
   item,
@@ -20,8 +23,51 @@ const MenuItem = ({
   const totalPrice = getTotalPrice(item, selectedExtras);
   const selectedDrinkType = selectedDrink[item.id];
 
+  // Función para agregar item al hacer clic en la imagen
+  const handleImagePress = () => {
+    if (!selectedTable) {
+      alert('Por favor, selecciona una mesa primero');
+      return;
+    }
+    
+    // Si es un plato principal con extras disponibles, agregar sin extras por defecto
+    // Si tiene bebida seleccionada, usarla; si no, null
+    const drink = selectedDrink[item.id] || null;
+    const extras = isMainDish ? {} : (selectedExtras[item.id] ? { [item.id]: selectedExtras[item.id] } : {});
+    
+    onAddItem(item);
+  };
+
   return (
     <View style={customStyles.menuItem}>
+      {/* Imagen del item (si existe) - Clicable para agregar directamente */}
+      {item.image ? (
+        <TouchableOpacity
+          style={customStyles.imageContainer}
+          onPress={handleImagePress}
+          disabled={!selectedTable}
+          activeOpacity={selectedTable ? 0.7 : 1}
+        >
+          <Image
+            source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+            style={[
+              customStyles.itemImage,
+              !selectedTable && customStyles.itemImageDisabled
+            ]}
+            resizeMode="cover"
+          />
+          {selectedTable && (
+            <View style={customStyles.imageOverlay}>
+              <View style={customStyles.imageOverlayBadge}>
+                <Text style={customStyles.imageOverlayText}>
+                  Toca para agregar a Mesa {selectedTable}
+                </Text>
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+      ) : null}
+
       <View style={customStyles.menuItemHeader}>
         {item.number ? (
           <View style={customStyles.numberBadge}>
@@ -41,7 +87,7 @@ const MenuItem = ({
               <Text style={customStyles.price}>{totalPrice.toFixed(2)}€</Text>
             </View>
           ) : (
-            <Text style={customStyles.price}>{item.price.toFixed(2)}€</Text>
+            <Text style={customStyles.price}>{totalPrice.toFixed(2)}€</Text>
           )}
         </View>
       </View>
