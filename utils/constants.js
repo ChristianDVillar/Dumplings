@@ -13,13 +13,19 @@ export const USERS = {
     username: 'general',
     password: 'graltest',
     role: 'general'
+  },
+  KITCHEN: {
+    username: 'cocina',
+    password: 'cocinatest',
+    role: 'kitchen'
   }
 };
 
 // Roles de usuario
 export const USER_ROLES = {
   ADMIN: 'admin',
-  GENERAL: 'general'
+  GENERAL: 'general',
+  KITCHEN: 'kitchen'
 };
 
 // Vistas de la aplicación

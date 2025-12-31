@@ -13,7 +13,7 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }) => {
   // Estado de autenticación
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null); // 'admin' o 'general'
+  const [userRole, setUserRole] = useState(null); // 'admin', 'general' o 'kitchen'
   const [username, setUsername] = useState(null);
   
   // Rol/Vista actual: 'waiter' (camarero), 'kitchen' (cocina), 'waiter-orders' (comandas camarero), 'client' (cliente)
@@ -29,9 +29,11 @@ export const AppProvider = ({ children }) => {
     setUserRole(role);
     setUsername(user);
     setIsAuthenticated(true);
-    // Si es admin, mostrar vista de admin, si no, mostrar vista de camarero
+    // Configurar vista inicial según el rol
     if (role === 'admin') {
       setCurrentView('admin');
+    } else if (role === 'kitchen') {
+      setCurrentView('kitchen-orders'); // Vista especial para cocina
     } else {
       setCurrentView('waiter');
     }

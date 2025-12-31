@@ -87,6 +87,46 @@ npm start
    - `a` para Android Emulator
    - `w` para Web
 
+## Compartir localhost con Cloudflare Tunnel
+
+Para compartir tu aplicación que corre en `http://localhost:19006/` con otros dispositivos:
+
+### Instalación de cloudflared
+
+**Windows (Recomendado - Instalación automática):**
+```powershell
+.\install-cloudflared.ps1
+```
+
+**Windows (Manual):**
+- Descarga desde: https://github.com/cloudflare/cloudflared/releases/latest
+- Busca `cloudflared-windows-amd64.exe` y renómbralo a `cloudflared.exe`
+- Colócalo en una carpeta del PATH
+
+**macOS:**
+```bash
+brew install cloudflared
+```
+
+**Linux:**
+- Descarga desde: https://github.com/cloudflare/cloudflared/releases/latest
+
+### Uso rápido
+
+Una vez instalado, ejecuta:
+
+```bash
+cloudflared tunnel --url http://localhost:19006
+```
+
+O usa el script automatizado:
+- **Windows:** `.\share-localhost.ps1` (PowerShell) - Detecta cloudflared automáticamente
+- **macOS/Linux:** `./share-localhost.sh`
+
+Esto generará una URL temporal (ej: `https://random-words-1234.trycloudflare.com`) que podrás compartir.
+
+> **Nota:** La URL es temporal y cambiará cada vez que reinicies el tunnel. Ver `SHARE_LOCALHOST.md` para más detalles.
+
 ## Uso
 
 ### Vista de Camarero

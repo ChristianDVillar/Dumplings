@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
-import { logger } from '../utils/logger';
 import ClientTicket from './ClientTicket';
 
 const ClientView = () => {
@@ -24,23 +23,13 @@ const ClientView = () => {
   // Obtener pedidos activos de la mesa
   const activeOrders = useMemo(() => {
     if (!selectedTable) return [];
-    const orders = getTableOrders(selectedTable);
-    logger.debug('[ClientView] activeOrders:', {
-      selectedTable,
-      ordersCount: orders.length
-    });
-    return orders;
+    return getTableOrders(selectedTable);
   }, [selectedTable, tableOrders, getTableOrders]);
 
   // Obtener historial de pagos de la mesa
   const history = useMemo(() => {
     if (!selectedTable) return [];
-    const hist = getTableHistory(selectedTable) || [];
-    logger.debug('[ClientView] history:', {
-      selectedTable,
-      historyCount: hist.length
-    });
-    return hist;
+    return getTableHistory(selectedTable) || [];
   }, [selectedTable, tableOrders, getTableHistory]);
 
   // Calcular totales de pedidos activos

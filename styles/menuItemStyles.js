@@ -1,4 +1,7 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, Dimensions } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isMobile = SCREEN_WIDTH < 768;
 
 export const menuItemStyles = StyleSheet.create({
   menuItem: {
@@ -123,14 +126,17 @@ export const menuItemStyles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   extraButton: {
+    minHeight: 44,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 20,
     backgroundColor: '#3A3A3A',
     borderWidth: 2,
     borderColor: '#FFD700',
     marginRight: 8,
     marginBottom: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   extraButtonSelected: {
     backgroundColor: '#FFD700',
@@ -218,6 +224,58 @@ export const menuItemStyles = StyleSheet.create({
     color: '#1A1A1A',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  // Estilos para imágenes de items
+  imageContainer: {
+    width: '100%',
+    height: isMobile ? 180 : 220,
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.4)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.4,
+      shadowRadius: 6,
+      elevation: 5,
+    }),
+  },
+  itemImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1A1A1A',
+  },
+  itemImageDisabled: {
+    opacity: 0.5,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageOverlayBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFA500',
+  },
+  imageOverlayText: {
+    color: '#1A1A1A',
+    fontSize: isMobile ? 12 : 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

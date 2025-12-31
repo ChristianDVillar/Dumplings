@@ -7,7 +7,8 @@ import {
   SafeAreaView,
   TouchableOpacity,
   StatusBar,
-  Platform
+  Platform,
+  Dimensions
 } from 'react-native';
 import TablesScreen from './components/TablesScreen';
 import MenuByCategory from './components/MenuByCategory';
@@ -16,6 +17,7 @@ import ChangeTableModal from './components/ChangeTableModal';
 import DiscountCalculator from './components/DiscountCalculator';
 import ViewSelector from './components/ViewSelector';
 import KitchenView from './components/KitchenView';
+import KitchenOrdersView from './components/KitchenOrdersView';
 import WaiterOrdersView from './components/WaiterOrdersView';
 import ClientView from './components/ClientView';
 import AdminView from './components/AdminView';
@@ -27,7 +29,6 @@ import { TableOrdersProvider, useTableOrdersContext } from './contexts/TableOrde
 import { MenuProvider, useMenuContext } from './contexts/MenuContext';
 import { useMenuHandlers } from './hooks/useMenuHandlers';
 import { useOrderHandlers } from './hooks/useOrderHandlers';
-import { logger } from './utils/logger';
 
 // Componente principal de la aplicación
 function AppContent() {
@@ -58,7 +59,9 @@ function AppContent() {
     getTableTotalWithDiscount,
     payTableItems,
     getTableHistory,
-    getTableHistoryTotal
+    getTableHistoryTotal,
+    setKitchenTimestamp,
+    getKitchenTimestamp
   } = useTableOrdersContext();
 
   // Estados para modales
@@ -67,7 +70,15 @@ function AppContent() {
 
   // Hooks personalizados para manejar menú y pedidos
   // IMPORTANTE: Todos los hooks deben estar antes de los returns condicionales
-  const menuHandlers = useMenuHandlers(selectedTable, addItemToTable, setShowOrderView);
+  const {
+    selectedExtras,
+    selectedDrink,
+    toggleExtra,
+    handleSelectDrink,
+    handleAddItem,
+    handleAddDrink
+  } = useMenuHandlers(selectedTable, addItemToTable);
+  
   const {
     currentOrders,
     currentTotal,
@@ -130,14 +141,32 @@ function AppContent() {
     setCurrentScreen('menu');
   };
 
-  // Si estamos en vista de cocina, mostrar KitchenView
-  if (currentView === 'kitchen') {
+  // Si estamos en vista de cocina (para rol general), mostrar KitchenView
+  if (currentView === 'kitchen' && userRole !== 'kitchen') {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
         <Header />
         <ViewSelector />
         <KitchenView />
+        <Footer />
+      </SafeAreaView>
+    );
+  }
+
+  // Si el usuario es de cocina, mostrar KitchenOrdersView (vista especial)
+  if (userRole === 'kitchen' && currentView === 'kitchen-orders') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Header />
+        <View style={styles.kitchenHeader}>
+          <Text style={styles.kitchenTitle}>Vista de Cocina</Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+          </TouchableOpacity>
+        </View>
+        <KitchenOrdersView />
         <Footer />
       </SafeAreaView>
     );
@@ -240,6 +269,7 @@ function AppContent() {
           onShowDiscount={() => setShowDiscountCalculator(true)}
           onPayItems={(orderIds) => payTableItems(selectedTable, orderIds)}
           onPayAll={() => payTableItems(selectedTable, null)}
+          setKitchenTimestamp={setKitchenTimestamp}
         />
       )}
 
@@ -310,6 +340,9 @@ export default function App() {
     </AppProvider>
   );
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isMobile = SCREEN_WIDTH < 768;
 
 const styles = StyleSheet.create({
   container: {
@@ -406,5 +439,69 @@ const styles = StyleSheet.create({
   orderToggleArrow: {
     color: '#1A1A1A',
     fontSize: 12,
+  },
+  kitchenHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFD700',
+    padding: isMobile ? 15 : 20,
+    paddingTop: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FFA500',
+  },
+  kitchenTitle: {
+    fontSize: isMobile ? 20 : 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+  },
+  adminHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFD700',
+    padding: isMobile ? 15 : 20,
+    paddingTop: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FFA500',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
+  },
+  adminTitle: {
+    fontSize: isMobile ? 20 : 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+  },
+  logoutButton: {
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    paddingHorizontal: isMobile ? 15 : 20,
+    paddingVertical: isMobile ? 10 : 12,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D32F2F',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
+  },
+  logoutButtonText: {
+    color: '#FFF',
+    fontSize: isMobile ? 14 : 16,
+    fontWeight: 'bold',
   },
 });

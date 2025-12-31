@@ -199,10 +199,13 @@ const styles = StyleSheet.create({
     color: '#FFD700',
   },
   closeButton: {
-    width: 30,
-    height: 30,
+    minWidth: 44,
+    minHeight: 44,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 22,
   },
   closeButtonText: {
     fontSize: 24,
