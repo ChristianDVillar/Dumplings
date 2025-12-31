@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, SectionList } fro
 import { groupMenuByCategory, MENU_CATEGORIES, getCategoryDisplayName } from '../utils/menuCategories';
 import MenuItem from './MenuItem';
 import { menuItemStyles } from '../styles/menuItemStyles';
+import { menuService } from '../services/menuService';
 
 const MenuByCategory = ({
   menuData,
@@ -18,26 +19,16 @@ const MenuByCategory = ({
   // Estado para rastrear qué categorías están expandidas
   const [expandedCategories, setExpandedCategories] = useState(new Set());
 
-  // Filtrar menú según búsqueda y estado habilitado
+  // Filtrar menú según búsqueda y estado habilitado usando servicios
   const filteredMenu = useMemo(() => {
-    // Primero filtrar solo items habilitados (enabled !== false)
-    let items = menuData.filter(item => item.enabled !== false);
+    // Primero filtrar solo items habilitados
+    let items = menuService.filterEnabledItems(menuData);
     
     // Luego filtrar por búsqueda si hay query
     if (!searchQuery.trim()) {
       return items;
     }
-    const query = searchQuery.toLowerCase().trim();
-    return items.filter(item => {
-      if (item.number && item.number.toString().includes(query)) return true;
-      if (item.nameEs.toLowerCase().includes(query)) return true;
-      if (item.nameEn && item.nameEn.toLowerCase().includes(query)) return true;
-      if (item.descriptionEs && item.descriptionEs.toLowerCase().includes(query)) return true;
-      if (item.descriptionEn && item.descriptionEn.toLowerCase().includes(query)) return true;
-      if (item.category.toLowerCase().includes(query)) return true;
-      if (item.categoryEn && item.categoryEn.toLowerCase().includes(query)) return true;
-      return false;
-    });
+    return menuService.searchItems(items, searchQuery);
   }, [menuData, searchQuery]);
 
   // Agrupar por categoría

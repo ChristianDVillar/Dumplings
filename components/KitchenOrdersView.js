@@ -6,6 +6,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { filterKitchenOrders } from '../utils/printHelpers';
 import { getElapsedTimeWithColor } from '../utils/timeHelpers';
 import ComandaTicket from './ComandaTicket';
+import { statisticsService } from '../services/statisticsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isMobile = SCREEN_WIDTH < 768;
@@ -51,14 +52,6 @@ const KitchenOrdersView = () => {
         
         if (kitchenOrders.length > 0) {
           const isCompleted = isKitchenOrderCompleted(table, timestamp);
-          console.log('🔵 [KitchenOrdersView] Procesando comanda:', {
-            table,
-            timestamp,
-            timestampType: typeof timestamp,
-            isCompleted,
-            kitchenOrdersCount: kitchenOrders.length
-          });
-          
           const elapsedTime = getElapsedTimeWithColor(timestamp);
           orders.push({
             tableNumber: table,
@@ -86,15 +79,8 @@ const KitchenOrdersView = () => {
   }, [allKitchenOrders, showCompleted]);
 
   const handleMarkCompleted = (tableNumber, timestamp) => {
-    console.log('🔵 [KitchenOrdersView] handleMarkCompleted llamado:', { tableNumber, timestamp, timestampType: typeof timestamp });
-    
-    // Marcar directamente sin Alert (más confiable en web)
-    console.log('🟢 [KitchenOrdersView] Llamando markKitchenOrderCompleted directamente:', { tableNumber, timestamp });
     markKitchenOrderCompleted(tableNumber, timestamp);
-    
-    // Forzar actualización del contexto para que el componente se re-renderice
     setLastUpdate(Date.now());
-    console.log('🟢 [KitchenOrdersView] markKitchenOrderCompleted llamado y lastUpdate actualizado');
   };
 
   // Calcular estadísticas por categoría
