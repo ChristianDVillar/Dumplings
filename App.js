@@ -9,7 +9,6 @@ import {
   StatusBar,
   Platform
 } from 'react-native';
-import { menuData } from './menuData';
 import TablesScreen from './components/TablesScreen';
 import MenuByCategory from './components/MenuByCategory';
 import OrderView from './components/OrderView';
@@ -19,8 +18,13 @@ import ViewSelector from './components/ViewSelector';
 import KitchenView from './components/KitchenView';
 import WaiterOrdersView from './components/WaiterOrdersView';
 import ClientView from './components/ClientView';
+import AdminView from './components/AdminView';
+import Login from './components/Login';
+import Header from './components/Header';
+import Footer from './components/Footer';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { TableOrdersProvider, useTableOrdersContext } from './contexts/TableOrdersContext';
+import { MenuProvider, useMenuContext } from './contexts/MenuContext';
 import { shouldAutoPrint, generatePrintData, formatPrintText, filterKitchenOrders } from './utils/printHelpers';
 import { getTotalPrice } from './utils/helpers';
 
@@ -35,9 +39,11 @@ function AppContent() {
   const [showOrderView, setShowOrderView] = useState(false);
 
   // Contexto de la aplicación
-  const { currentView, setLastUpdate } = useAppContext();
-
+  const { isAuthenticated, userRole, login, logout, currentView, setLastUpdate } = useAppContext();
+  const { menuData } = useMenuContext();
+  
   // Hook personalizado para manejar pedidos (desde contexto compartido)
+  // IMPORTANTE: Todos los hooks deben llamarse antes de cualquier return condicional
   const {
     tableOrders,
     addItemToTable,
@@ -59,6 +65,56 @@ function AppContent() {
   // Estados para modales
   const [showChangeTableModal, setShowChangeTableModal] = useState(false);
   const [showDiscountCalculator, setShowDiscountCalculator] = useState(false);
+
+  // Obtener datos del pedido actual (usando useMemo para actualización reactiva)
+  // IMPORTANTE: Todos los hooks deben estar antes de los returns condicionales
+  const currentOrders = useMemo(() => {
+    if (!selectedTable) {
+      console.log('🔍 [App] currentOrders: No hay mesa seleccionada');
+      return [];
+    }
+    const orders = getTableOrders(selectedTable);
+    console.log('🔍 [App] currentOrders:', {
+      selectedTable,
+      ordersCount: orders.length,
+      orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
+    });
+    return orders;
+  }, [selectedTable, tableOrders, getTableOrders]);
+  
+  const currentTotal = selectedTable ? getTableTotal(selectedTable) : 0;
+  const currentDiscount = selectedTable ? getTableDiscount(selectedTable) : 0;
+  const currentTotalWithDiscount = selectedTable ? getTableTotalWithDiscount(selectedTable) : 0;
+  const currentOccupied = selectedTable ? isTableOccupied(selectedTable) : false;
+  const historyTotal = selectedTable ? getTableHistoryTotal(selectedTable) : 0;
+
+  // Si no está autenticado, mostrar login
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Login onLogin={login} />
+      </SafeAreaView>
+    );
+  }
+
+  // Si es administrador, mostrar vista de administración
+  if (userRole === 'admin') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Header />
+        <View style={styles.adminHeader}>
+          <Text style={styles.adminTitle}>Panel de Administración</Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+          </TouchableOpacity>
+        </View>
+        <AdminView />
+        <Footer />
+      </SafeAreaView>
+    );
+  }
 
   // Función wrapper para mover mesas que actualiza el estado
   const handleMoveTable = (fromTable, toTable) => {
@@ -185,27 +241,6 @@ function AppContent() {
     // Ya no se imprime automáticamente - se hace con botón de confirmación
   };
 
-  // Obtener datos del pedido actual (usando useMemo para actualización reactiva)
-  const currentOrders = useMemo(() => {
-    if (!selectedTable) {
-      console.log('🔍 [App] currentOrders: No hay mesa seleccionada');
-      return [];
-    }
-    const orders = getTableOrders(selectedTable);
-    console.log('🔍 [App] currentOrders:', {
-      selectedTable,
-      ordersCount: orders.length,
-      orders: orders.map(o => ({ id: o.item.id, name: o.item.nameEs, quantity: o.quantity }))
-    });
-    return orders;
-  }, [selectedTable, tableOrders]);
-  
-  const currentTotal = selectedTable ? getTableTotal(selectedTable) : 0;
-  const currentDiscount = selectedTable ? getTableDiscount(selectedTable) : 0;
-  const currentTotalWithDiscount = selectedTable ? getTableTotalWithDiscount(selectedTable) : 0;
-  const currentOccupied = selectedTable ? isTableOccupied(selectedTable) : false;
-  const historyTotal = selectedTable ? getTableHistoryTotal(selectedTable) : 0;
-
   // Manejar selección de mesa
   const handleSelectTable = (table) => {
     setSelectedTable(table);
@@ -217,8 +252,10 @@ function AppContent() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
+        <Header />
         <ViewSelector />
         <KitchenView />
+        <Footer />
       </SafeAreaView>
     );
   }
@@ -228,8 +265,10 @@ function AppContent() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
+        <Header />
         <ViewSelector />
         <WaiterOrdersView />
+        <Footer />
       </SafeAreaView>
     );
   }
@@ -239,8 +278,10 @@ function AppContent() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
+        <Header />
         <ViewSelector />
         <ClientView />
+        <Footer />
       </SafeAreaView>
     );
   }
@@ -250,12 +291,14 @@ function AppContent() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
+        <Header />
         <ViewSelector />
         <TablesScreen
           onSelectTable={handleSelectTable}
           isTableOccupied={isTableOccupied}
           selectedTable={selectedTable}
         />
+        <Footer />
       </SafeAreaView>
     );
   }
@@ -264,6 +307,7 @@ function AppContent() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      <Header />
       <ViewSelector />
       
       {/* Header con botón de volver */}
@@ -366,6 +410,7 @@ function AppContent() {
         onAddDrink={handleAddDrink}
         onAddItem={handleAddItem}
       />
+      <Footer />
     </SafeAreaView>
   );
 }
@@ -374,9 +419,11 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
-      <TableOrdersProvider>
-        <AppContent />
-      </TableOrdersProvider>
+      <MenuProvider>
+        <TableOrdersProvider>
+          <AppContent />
+        </TableOrdersProvider>
+      </MenuProvider>
     </AppProvider>
   );
 }
