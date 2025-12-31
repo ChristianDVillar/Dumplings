@@ -1,18 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { getTotalPrice } from '../utils/helpers';
-
-const EXTRA_OPTIONS = ['gambas', 'pollo', 'ternera', 'verduras'];
-const DRINK_OPTIONS = [
-  'Coca',
-  'Coca Zero',
-  'Fanta Naranja',
-  'Fanta Limón',
-  'Nestea Limón',
-  'Nestea Maracuyá',
-  'Acuarius',
-  'Acuarius de Naranja'
-];
+import { EXTRA_OPTIONS, DRINK_OPTIONS } from '../utils/constants';
 
 const MenuItem = ({
   item,
