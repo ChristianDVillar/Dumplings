@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, Platform, 
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
 import { getCategoryDisplayName } from '../utils/menuCategories';
+import { statisticsService } from '../services/statisticsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isMobile = SCREEN_WIDTH < 768;
@@ -12,56 +13,13 @@ const StatisticsModal = ({ visible, onClose }) => {
   const tables = generateTables();
   const allTables = [...tables.regular, ...tables.takeaway];
 
-  // Calcular estadísticas históricas desde todos los pagos
+  // Calcular estadísticas históricas usando el servicio
   const historicalStats = useMemo(() => {
-    const categoryStats = {};
-    let totalItems = 0;
-    let totalRevenue = 0;
-    let totalDiscounts = 0;
-    let totalPayments = 0;
-
-    // Recorrer todas las mesas y su historial
-    allTables.forEach(table => {
-      const history = getTableHistory(table);
-      if (history && history.length > 0) {
-        history.forEach(payment => {
-          totalPayments++;
-          totalRevenue += payment.total || 0;
-          totalDiscounts += payment.discount || 0;
-
-          // Contar items por categoría
-          if (payment.items && Array.isArray(payment.items)) {
-            payment.items.forEach(order => {
-              if (order.item) {
-                const category = order.item.category || 'OTROS';
-                if (!categoryStats[category]) {
-                  categoryStats[category] = {
-                    name: category,
-                    total: 0,
-                    revenue: 0
-                  };
-                }
-                const quantity = order.quantity || 1;
-                const price = order.price || 0;
-                categoryStats[category].total += quantity;
-                categoryStats[category].revenue += price * quantity;
-                totalItems += quantity;
-              }
-            });
-          }
-        });
-      }
-    });
-
-    return {
-      categoryStats: Object.values(categoryStats).sort((a, b) => b.total - a.total),
-      totals: {
-        items: totalItems,
-        revenue: totalRevenue,
-        discounts: totalDiscounts,
-        payments: totalPayments
-      }
-    };
+    return statisticsService.calculateHistoricalStats(
+      tableHistory,
+      getTableHistory,
+      allTables
+    );
   }, [allTables, tableHistory, getTableHistory]);
 
   return (

@@ -5,6 +5,8 @@ import { useMenuContext } from '../contexts/MenuContext';
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
 import StatisticsModal from './StatisticsModal';
+import { menuService } from '../services/menuService';
+import { statisticsService } from '../services/statisticsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isMobile = SCREEN_WIDTH < 768;
@@ -88,50 +90,9 @@ const AdminView = () => {
     return grouped;
   }, [disabledItems]);
 
-  // Función para obtener el siguiente número disponible según la categoría
+  // Usar el servicio para obtener el siguiente número disponible
   const getNextNumberForCategory = (category) => {
-    // Mapeo de categorías a rangos de números iniciales
-    const categoryNumberRanges = {
-      'ENTRANTES': { start: 1, end: 10 },
-      'MO XIAN': { start: 11, end: 20 },
-      'GYOZAS A LA PLANCHA': { start: 21, end: 30 },
-      'GYOZAS FRITAS': { start: 31, end: 40 },
-      'GYOZAS AL VAPOR': { start: 41, end: 50 },
-      'DIMSUM': { start: 51, end: 60 },
-      'PRINCIPALES': { start: 61, end: 80 },
-      'PARA IR CON TODO': { start: 61, end: 70 }, // Mapeada a PRINCIPALES
-      'BEBIDAS': { start: 71, end: 99 }
-    };
-
-    const range = categoryNumberRanges[category];
-    if (!range) {
-      return ''; // Si no hay rango definido, retornar vacío
-    }
-
-    // Obtener todos los números usados en esta categoría (habilitados y deshabilitados)
-    // También incluir "PARA IR CON TODO" si la categoría es "PRINCIPALES"
-    const categoriesToCheck = category === 'PRINCIPALES' 
-      ? ['PRINCIPALES', 'PARA IR CON TODO']
-      : [category];
-    
-    const usedNumbers = menuItems
-      .filter(item => categoriesToCheck.includes(item.category) && item.number)
-      .map(item => {
-        const num = parseInt(item.number, 10);
-        return isNaN(num) ? null : num;
-      })
-      .filter(num => num !== null && num >= range.start && num <= range.end)
-      .sort((a, b) => a - b);
-
-    // Encontrar el primer número disponible en el rango
-    for (let i = range.start; i <= range.end; i++) {
-      if (!usedNumbers.includes(i)) {
-        return i.toString().padStart(2, '0');
-      }
-    }
-
-    // Si todos los números están ocupados, retornar el siguiente fuera del rango
-    return (range.end + 1).toString().padStart(2, '0');
+    return menuService.getNextNumberForCategory(menuItems, category);
   };
 
   const handleAddNew = () => {
@@ -254,51 +215,14 @@ const AdminView = () => {
     Alert.alert('Éxito', `Item ${newEnabled ? 'habilitado' : 'deshabilitado'} correctamente`);
   };
 
-  // Calcular estadísticas por item individual de todos los pedidos del día
+  // Calcular estadísticas por item individual usando el servicio
   const itemStats = useMemo(() => {
-    const stats = {};
-    
-    allTables.forEach(table => {
-      if (!isTableOccupied(table)) return;
-      
-      const tableOrdersList = getTableOrders(table);
-      tableOrdersList.forEach(order => {
-        const itemId = order.item.id;
-        const itemName = order.item.nameEs || 'Sin nombre';
-        const category = order.item.category || 'OTROS';
-        
-        if (!stats[itemId]) {
-          stats[itemId] = {
-            id: itemId,
-            name: itemName,
-            nameEn: order.item.nameEn,
-            category: category,
-            total: 0,
-            price: order.price || order.item.price || 0
-          };
-        }
-        stats[itemId].total += order.quantity;
-      });
-    });
-    
-    // Convertir a array y ordenar por categoría y luego por cantidad
-    const statsArray = Object.values(stats);
-    
-    // Agrupar por categoría para mostrar organizados
-    const groupedByCategory = {};
-    statsArray.forEach(stat => {
-      if (!groupedByCategory[stat.category]) {
-        groupedByCategory[stat.category] = [];
-      }
-      groupedByCategory[stat.category].push(stat);
-    });
-    
-    // Ordenar cada categoría por cantidad (mayor a menor)
-    Object.keys(groupedByCategory).forEach(category => {
-      groupedByCategory[category].sort((a, b) => b.total - a.total);
-    });
-    
-    return groupedByCategory;
+    return statisticsService.calculateDailyStatsByItem(
+      tableOrders,
+      getTableOrders,
+      isTableOccupied,
+      allTables
+    );
   }, [allTables, tableOrders, isTableOccupied, getTableOrders]);
 
   return (
