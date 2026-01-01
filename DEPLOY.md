@@ -139,6 +139,31 @@ Si necesitas variables de entorno:
 
 ## 🐛 Solución de Problemas
 
+### Error: "Deploy directory 'dist' does not exist"
+Este error significa que el build falló antes de crear el directorio. Soluciones:
+
+1. **Verificar logs de build en Netlify**:
+   - Ve a tu sitio en Netlify
+   - Haz clic en "Deploys" → Selecciona el deploy fallido
+   - Revisa los logs completos para ver el error específico
+
+2. **Probar build localmente**:
+   ```bash
+   npm install
+   npm run build:web
+   ls dist  # Verificar que dist existe
+   ```
+
+3. **Si el build falla en Netlify pero funciona localmente**:
+   - Verifica la versión de Node.js (debe ser 18)
+   - Asegúrate de que todas las dependencias estén en `package.json`
+   - Revisa si hay errores de memoria (Netlify tiene límites)
+
+4. **Alternativa: Usar Vercel**:
+   - Vercel suele tener mejor soporte para Expo
+   - Ve a [vercel.com](https://vercel.com) e importa tu repositorio
+   - La configuración ya está lista en `vercel.json`
+
 ### Error: "Cannot find module"
 ```bash
 rm -rf node_modules package-lock.json
@@ -150,6 +175,7 @@ npm run build:web
 - Verifica que todos los imports sean correctos
 - Asegúrate de que no haya errores de lint
 - Revisa los logs de build en la plataforma
+- Verifica que la versión de Node.js sea compatible (18+)
 
 ### La aplicación no carga
 - Verifica que la ruta base esté configurada correctamente
