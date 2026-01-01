@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build:web"
+  command = "npm install && npx expo export:web"
   publish = "dist"
 
 [[redirects]]
