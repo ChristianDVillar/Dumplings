@@ -9,4 +9,7 @@ npm-debug.*
 .DS_Store
 *.log
 tunnel-*.txt
-
+dist/
+web-build/
+.env
+.env.local

@@ -181,12 +181,28 @@ Dumplings/
 └── package.json        # Dependencias
 ```
 
+## 🚀 Despliegue
+
+Este proyecto puede desplegarse gratuitamente en:
+- **Vercel** (Recomendado) - [Ver guía de despliegue](./DEPLOY.md)
+- **Netlify** - [Ver guía de despliegue](./DEPLOY.md)
+- **GitHub Pages** - [Ver guía de despliegue](./DEPLOY.md)
+
+### Despliegue rápido con Vercel:
+```bash
+npm i -g vercel
+vercel
+```
+
+O conecta tu repositorio GitHub en [vercel.com](https://vercel.com) para despliegue automático.
+
 ## Tecnologías
 
 - **React Native** - Framework móvil
 - **Expo** - Plataforma de desarrollo
 - **JavaScript** - Lenguaje de programación
 - **Context API** - Gestión de estado global
+- **AsyncStorage** - Persistencia de datos local
 
 ## Características Técnicas
 
