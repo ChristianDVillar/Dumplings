@@ -1,6 +1,10 @@
 [build]
-  command = "npm install && npx expo export:web"
+  command = "npm install && npm run build:web"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+  CI = "false"
 
 [[redirects]]
   from = "/*"
