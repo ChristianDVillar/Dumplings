@@ -1,6 +1,8 @@
 [build]
   command = "bash netlify-build.sh"
   publish = "dist"
+  
+# Si Expo crea web-build, lo renombramos a dist en el script
 
 [build.environment]
   NODE_VERSION = "18"
