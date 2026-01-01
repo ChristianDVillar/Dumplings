@@ -32,8 +32,14 @@ npx expo export:web || {
 echo "✅ Build command completed"
 
 echo "📋 Verifying build output..."
-if [ ! -d "dist" ]; then
-  echo "❌ ERROR: dist directory was not created!"
+# Expo puede crear 'web-build' o 'dist', verificar ambos
+if [ -d "web-build" ]; then
+  echo "✅ Found web-build directory, renaming to dist..."
+  mv web-build dist
+elif [ -d "dist" ]; then
+  echo "✅ Found dist directory"
+else
+  echo "❌ ERROR: Neither dist nor web-build directory was created!"
   echo "📋 Current directory contents:"
   ls -la
   exit 1
