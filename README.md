@@ -1,12 +1,12 @@
 # Sistema de Gestión de Pedidos - Dumplings Restaurant
 
-Sistema completo de gestión de pedidos para restaurante con múltiples vistas (Camarero, Cocina, Comandas y Cliente).
+Sistema completo de gestión de pedidos para restaurante con múltiples vistas (Camarero, Cocina, Comandas, Cliente y Administrador).
 
 ## Características Principales
 
-### 🎯 Vistas del Sistema
+### Vistas del Sistema
 
-#### 👨‍💼 Vista de Camarero
+#### Vista de Camarero
 - Gestión completa de mesas y pedidos
 - Búsqueda de items del menú por número, nombre o categoría
 - Agregar items con extras y bebidas
@@ -16,20 +16,21 @@ Sistema completo de gestión de pedidos para restaurante con múltiples vistas (
 - Pagar items seleccionados o toda la cuenta
 - Envío de comandas a cocina e impresión
 
-#### 👨‍🍳 Vista de Cocina
+#### Vista de Cocina
 - Visualización de todas las mesas con pedidos
 - Filtrado automático: solo muestra items que van a cocina
 - Comandas formateadas como tickets
 - Agrupación por categorías
 - Actualización en tiempo real
+- Marcar comandas como completadas
 
-#### 📋 Vista de Comandas (Camarero)
+#### Vista de Comandas (Camarero)
 - Visualización de todas las comandas completas
 - Muestra todos los items de cada mesa
 - Formato de ticket profesional
 - Lista de mesas con pedidos
 
-#### 👤 Vista de Cliente
+#### Vista de Cliente
 - Visualización de todas las mesas con pedidos
 - Ver pedido actual o comandas pagadas
 - Selección de comandas del historial
@@ -39,14 +40,22 @@ Sistema completo de gestión de pedidos para restaurante con múltiples vistas (
   - Descuentos aplicados
   - Total a pagar
 
-### 🔍 Búsqueda Avanzada
+#### Vista de Administrador
+- Gestión completa del menú (agregar, editar, habilitar/deshabilitar items)
+- Items habilitados y deshabilitados agrupados por categoría
+- Sugerencia automática del siguiente número disponible por categoría
+- Estadísticas del día: consumo por item individual con cantidades y totales
+- Estadísticas históricas: totales de items, ingresos, descuentos y pagos
+- Búsqueda y filtrado de items por categoría
+
+### Búsqueda Avanzada
 - Búsqueda por número de item
 - Búsqueda por nombre (español o inglés)
 - Búsqueda por descripción
 - Búsqueda por categoría
 - Búsqueda en tiempo real
 
-### 📦 Gestión de Pedidos
+### Gestión de Pedidos
 - Agregar items con extras personalizados
 - Seleccionar bebidas para items específicos
 - Modificar cantidades
@@ -55,7 +64,7 @@ Sistema completo de gestión de pedidos para restaurante con múltiples vistas (
 - Mover pedidos entre mesas
 - Pagos parciales o completos
 
-### 🖨️ Sistema de Comandas
+### Sistema de Comandas
 - Comandas automáticas separadas:
   - **Cocina**: Solo items que requieren cocción
   - **Impresión (Camarero)**: Ensaladas, edamame y bebidas
@@ -63,12 +72,13 @@ Sistema completo de gestión de pedidos para restaurante con múltiples vistas (
 - Formato profesional de tickets
 - Agrupación por categorías
 
-### 💰 Gestión Financiera
+### Gestión Financiera
 - Cálculo automático de totales
 - Aplicación de descuentos
 - Historial de pagos por mesa
 - Pagos parciales o completos
 - Visualización de totales históricos
+- Estadísticas de consumo por item y categoría
 
 ## Instalación
 
@@ -87,46 +97,6 @@ npm start
    - `a` para Android Emulator
    - `w` para Web
 
-## Compartir localhost con Cloudflare Tunnel
-
-Para compartir tu aplicación que corre en `http://localhost:19006/` con otros dispositivos:
-
-### Instalación de cloudflared
-
-**Windows (Recomendado - Instalación automática):**
-```powershell
-.\install-cloudflared.ps1
-```
-
-**Windows (Manual):**
-- Descarga desde: https://github.com/cloudflare/cloudflared/releases/latest
-- Busca `cloudflared-windows-amd64.exe` y renómbralo a `cloudflared.exe`
-- Colócalo en una carpeta del PATH
-
-**macOS:**
-```bash
-brew install cloudflared
-```
-
-**Linux:**
-- Descarga desde: https://github.com/cloudflare/cloudflared/releases/latest
-
-### Uso rápido
-
-Una vez instalado, ejecuta:
-
-```bash
-cloudflared tunnel --url http://localhost:19006
-```
-
-O usa el script automatizado:
-- **Windows:** `.\share-localhost.ps1` (PowerShell) - Detecta cloudflared automáticamente
-- **macOS/Linux:** `./share-localhost.sh`
-
-Esto generará una URL temporal (ej: `https://random-words-1234.trycloudflare.com`) que podrás compartir.
-
-> **Nota:** La URL es temporal y cambiará cada vez que reinicies el tunnel. Ver `SHARE_LOCALHOST.md` para más detalles.
-
 ## Uso
 
 ### Vista de Camarero
@@ -141,7 +111,8 @@ Esto generará una URL temporal (ej: `https://random-words-1234.trycloudflare.co
 1. Visualiza todas las mesas con pedidos
 2. Selecciona una mesa para ver su comanda
 3. Ve solo los items que requieren cocción
-4. Las comandas se actualizan automáticamente
+4. Marca las comandas como completadas cuando estén listas
+5. Las comandas se actualizan automáticamente
 
 ### Vista de Comandas
 1. Visualiza todas las mesas con pedidos
@@ -154,47 +125,89 @@ Esto generará una URL temporal (ej: `https://random-words-1234.trycloudflare.co
 3. Ve el pedido actual o cambia a "Comandas Pagadas"
 4. Selecciona una comanda del historial para ver su ticket completo
 
+### Vista de Administrador
+1. Gestiona el menú: agrega, edita o habilita/deshabilita items
+2. Los items deshabilitados no aparecen en el menú del camarero
+3. Revisa estadísticas del día por item individual
+4. Consulta estadísticas históricas de consumo e ingresos
+5. El sistema sugiere automáticamente el siguiente número disponible al agregar un nuevo item
+
 ## Estructura del Proyecto
 
 ```
 Dumplings/
 ├── components/          # Componentes React Native
-│   ├── ClientTicket.js      # Ticket del cliente
-│   ├── ClientView.js        # Vista del cliente
-│   ├── ComandaTicket.js     # Componente de ticket de comanda
-│   ├── KitchenView.js       # Vista de cocina
-│   ├── MenuByCategory.js    # Menú agrupado por categorías
-│   ├── OrderView.js         # Vista de pedidos
-│   ├── WaiterOrdersView.js  # Vista de comandas de camarero
-│   └── ...
+│   ├── AdminView.js          # Vista de administrador
+│   ├── ChangeTableModal.js   # Modal para cambiar mesa
+│   ├── ClientTicket.js       # Ticket del cliente
+│   ├── ClientView.js         # Vista del cliente
+│   ├── ComandaTicket.js      # Componente de ticket de comanda
+│   ├── DiscountCalculator.js # Calculadora de descuentos
+│   ├── Footer.js             # Pie de página
+│   ├── Header.js             # Encabezado
+│   ├── KitchenOrdersView.js  # Vista de órdenes de cocina
+│   ├── KitchenView.js        # Vista de cocina
+│   ├── Login.js              # Pantalla de login
+│   ├── MenuByCategory.js     # Menú agrupado por categorías
+│   ├── MenuItem.js           # Componente de item del menú
+│   ├── OrderView.js           # Vista de pedidos
+│   ├── StatisticsModal.js    # Modal de estadísticas históricas
+│   ├── TablesScreen.js       # Pantalla de selección de mesas
+│   ├── ViewSelector.js       # Selector de vistas
+│   └── WaiterOrdersView.js   # Vista de comandas de camarero
 ├── contexts/           # Contextos de React
 │   ├── AppContext.js         # Contexto de la aplicación
+│   ├── MenuContext.js        # Contexto del menú
 │   └── TableOrdersContext.js # Contexto compartido de pedidos
 ├── hooks/              # Hooks personalizados
-│   └── useTableOrders.js    # Hook de gestión de pedidos
-├── utils/               # Utilidades
-│   ├── helpers.js           # Funciones auxiliares
-│   ├── menuCategories.js   # Categorías del menú
-│   └── printHelpers.js     # Funciones de impresión
+│   ├── useMenuHandlers.js    # Handlers para el menú
+│   └── useOrderHandlers.js   # Handlers para pedidos
+├── services/           # Capa de servicios (lógica de negocio)
+│   ├── menuService.js        # Servicios del menú
+│   ├── orderService.js       # Servicios de pedidos
+│   ├── statisticsService.js  # Servicios de estadísticas
+│   └── storageService.js     # Servicios de persistencia
+├── styles/             # Estilos
+│   └── menuItemStyles.js     # Estilos de items del menú
+├── utils/              # Utilidades
+│   ├── constants.js          # Constantes
+│   ├── helpers.js            # Funciones auxiliares
+│   ├── logger.js             # Utilidades de logging
+│   ├── menuCategories.js     # Categorías del menú
+│   ├── printHelpers.js       # Funciones de impresión
+│   └── timeHelpers.js        # Utilidades de tiempo
 ├── App.js              # Componente principal
 ├── menuData.js         # Datos del menú
+├── netlify.toml        # Configuración de Netlify
+├── netlify-build.sh    # Script de build para Netlify
 └── package.json        # Dependencias
 ```
 
-## 🚀 Despliegue
+## Despliegue
 
-Este proyecto puede desplegarse gratuitamente en:
-- **Vercel** (Recomendado) - [Ver guía de despliegue](./DEPLOY.md)
-- **Netlify** - [Ver guía de despliegue](./DEPLOY.md)
-- **GitHub Pages** - [Ver guía de despliegue](./DEPLOY.md)
+Este proyecto está configurado para desplegarse gratuitamente en **Netlify**.
 
-### Despliegue rápido con Vercel:
+### Despliegue rápido
+
+1. Ve a [netlify.com](https://netlify.com)
+2. Inicia sesión con GitHub
+3. Haz clic en "New site from Git"
+4. Selecciona tu repositorio `Dumplings`
+5. **NO cambies ninguna configuración** (ya está todo configurado en `netlify.toml`)
+6. Haz clic en "Deploy site"
+
+Ver [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) para más detalles.
+
+### Verificar build localmente
+
+Antes de desplegar, puedes probar el build localmente:
+
 ```bash
-npm i -g vercel
-vercel
+npm run build:web
+npm run preview
 ```
 
-O conecta tu repositorio GitHub en [vercel.com](https://vercel.com) para despliegue automático.
+Esto iniciará un servidor local para probar el build.
 
 ## Tecnologías
 
@@ -206,12 +219,15 @@ O conecta tu repositorio GitHub en [vercel.com](https://vercel.com) para desplie
 
 ## Características Técnicas
 
-- ✅ Estado compartido entre vistas mediante Context API
-- ✅ Actualización en tiempo real de pedidos
-- ✅ Filtrado inteligente de items (cocina vs. impresión)
-- ✅ Formato profesional de tickets
-- ✅ Gestión de historial de pagos
-- ✅ Diseño responsive y moderno
+- Estado compartido entre vistas mediante Context API
+- Actualización en tiempo real de pedidos
+- Filtrado inteligente de items (cocina vs. impresión)
+- Formato profesional de tickets
+- Gestión de historial de pagos
+- Diseño responsive y moderno
+- Separación de lógica de negocio en capa de servicios
+- Persistencia local de datos con AsyncStorage
+- Estadísticas en tiempo real y históricas
 
 ## Categorías del Menú
 
@@ -230,6 +246,8 @@ O conecta tu repositorio GitHub en [vercel.com](https://vercel.com) para desplie
 - Las ensaladas, edamame y bebidas se envían a impresión para el camarero
 - El historial de pagos se mantiene por mesa
 - Los descuentos se aplican proporcionalmente en pagos parciales
+- Los items deshabilitados no aparecen en el menú del camarero pero permanecen en el sistema
+- El sistema sugiere automáticamente el siguiente número disponible al agregar un nuevo item según su categoría
 
 ## Autor
 
