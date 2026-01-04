@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "build:web": "npx expo export:web",
     "build:web:verbose": "npx expo export:web --verbose",
-    "preview": "expo export:web && npx serve dist"
+    "preview": "expo export:web && (test -d web-build && npx serve web-build || npx serve dist)"
   },
   "dependencies": {
     "@expo/webpack-config": "^19.0.0",
