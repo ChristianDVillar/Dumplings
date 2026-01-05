@@ -34,7 +34,13 @@ echo "✅ Build command completed"
 echo "📋 Verifying build output..."
 # Expo puede crear 'web-build' o 'dist', verificar ambos
 if [ -d "web-build" ]; then
-  echo "✅ Found web-build directory, renaming to dist..."
+  echo "✅ Found web-build directory"
+  # Eliminar dist si existe para evitar conflictos
+  if [ -d "dist" ]; then
+    echo "🗑️ Removing existing dist directory..."
+    rm -rf dist
+  fi
+  echo "📦 Renaming web-build to dist..."
   mv web-build dist
 elif [ -d "dist" ]; then
   echo "✅ Found dist directory"
