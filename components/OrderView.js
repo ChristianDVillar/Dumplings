@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform, Dimensions } from 'react-native';
 import { generatePrintData, formatPrintText, filterSaladsAndDrinks, filterKitchenOrders } from '../utils/printHelpers';
 import { useAppContext } from '../contexts/AppContext';
+import { useTableOrdersContext } from '../contexts/TableOrdersContext';
+import KitchenCommentModal from './KitchenCommentModal';
 
 const OrderView = ({
   selectedTable,
@@ -18,41 +20,34 @@ const OrderView = ({
   onShowDiscount,
   onPayItems,
   onPayAll,
-  setKitchenTimestamp
+  setKitchenTimestamp,
+  getKitchenComment,
+  setKitchenComment
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
-  const { currentView, setLastUpdate } = useAppContext();
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [pendingComment, setPendingComment] = useState(null); // Comentario pendiente para la próxima comanda
+  const { currentView, setLastUpdate, userRole } = useAppContext();
+  const { getKitchenTimestamp: getKitchenTimestampFromContext, getKitchenComment: getKitchenCommentFromContext, setKitchenComment: setKitchenCommentFromContext } = useTableOrdersContext();
   
-  // Función para enviar todo a impresión (ensaladas y bebidas) con confirmación
-  const handleSendAllToPrint = () => {
-    const saladsAndDrinks = filterSaladsAndDrinks(orders);
-    if (saladsAndDrinks.length === 0) {
-      Alert.alert('Info', 'No hay ensaladas, edamame o bebidas para imprimir');
-      return;
+  // Determinar si el usuario es camarero (puede agregar comentarios)
+  const isWaiterView = currentView === 'waiter' || userRole === 'general';
+  
+  // Obtener el timestamp más reciente de la comanda para el comentario
+  const getLatestKitchenTimestamp = () => {
+    // Obtener el timestamp más reciente de esta mesa
+    if (getKitchenTimestampFromContext) {
+      const latestTimestamp = getKitchenTimestampFromContext(selectedTable);
+      return latestTimestamp || Date.now();
     }
-    
-    const totalItems = saladsAndDrinks.reduce((sum, order) => sum + order.quantity, 0);
-    Alert.alert(
-      'Enviar a Impresión',
-      `¿Enviar ${totalItems} item(s) (ensaladas, edamame y bebidas) a impresión?\n\nMesa: ${selectedTable}`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Enviar',
-          onPress: () => {
-            const printData = generatePrintData(selectedTable, orders, 'salads_drinks');
-            const printText = formatPrintText(printData);
-            // TODO: Implementar impresión real
-            console.log('🖨️ IMPRESIÓN (Camarero - Ensaladas/Bebidas/Edamame):');
-            console.log(printText);
-            Alert.alert('✅ Enviado', 'Ensaladas, edamame y bebidas enviadas a impresión');
-          }
-        }
-      ]
-    );
+    return Date.now();
   };
   
-  // Función para enviar todo a cocina
+  // Usar funciones del contexto si no se pasan como props
+  const getKitchenCommentFunc = getKitchenComment || getKitchenCommentFromContext;
+  const setKitchenCommentFunc = setKitchenComment || setKitchenCommentFromContext;
+  
+  // Función para enviar todo a cocina (incluye ensaladas/bebidas automáticamente)
   const handleSendAllToKitchen = () => {
     const kitchenOrders = filterKitchenOrders(orders);
     const saladsAndDrinks = filterSaladsAndDrinks(orders);
@@ -104,7 +99,13 @@ const OrderView = ({
       // Guardar timestamp de cuando se envió a cocina (siempre actualizar, incluso si ya existe uno previo)
       // Esto resetea el timer cada vez que se envían nuevos items
       if (setKitchenTimestamp && (kitchenOrdersRef.length > 0 || saladsAndDrinksRef.length > 0)) {
-        setKitchenTimestamp(tableNumber);
+        const timestamp = setKitchenTimestamp(tableNumber); // setKitchenTimestamp ahora retorna el timestamp
+        
+        // Si hay un comentario pendiente, guardarlo con este timestamp
+        if (pendingComment && setKitchenCommentFunc) {
+          setKitchenCommentFunc(tableNumber, timestamp, pendingComment);
+          setPendingComment(null); // Limpiar comentario pendiente
+        }
       }
       
       Alert.alert('✅ Enviado', 
@@ -293,6 +294,20 @@ const OrderView = ({
         </ScrollView>
       )}
 
+      {/* Botón de comentarios - siempre visible para camarero */}
+      {isWaiterView && selectedTable && (
+        <View style={styles.commentButtonContainer}>
+          <TouchableOpacity
+            style={[styles.commentButtonStandalone]}
+            onPress={() => setShowCommentModal(true)}
+          >
+            <Text style={styles.commentButtonText}>
+              💬 {pendingComment ? 'Editar Comentario' : 'Agregar Comentario'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {occupied && (
         <>
           <View style={styles.totalContainer}>
@@ -364,17 +379,9 @@ const OrderView = ({
             </TouchableOpacity>
           </View>
           
-          {/* Botones de envío solo para camarero */}
-          {currentView === 'waiter' && occupied && orders.length > 0 && (
+          {/* Botón de envío solo para camarero */}
+          {isWaiterView && occupied && orders.length > 0 && (
             <View style={styles.printButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.printButton, styles.printSaladsButton]}
-                onPress={handleSendAllToPrint}
-              >
-                <Text style={styles.printButtonText}>
-                  🖨️ Enviar Ensaladas/Bebidas a Impresión
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.printButton, styles.printKitchenButton]}
                 onPress={handleSendAllToKitchen}
@@ -384,6 +391,30 @@ const OrderView = ({
                 </Text>
               </TouchableOpacity>
             </View>
+          )}
+          
+          {/* Modal de comentarios */}
+          {isWaiterView && (
+            <KitchenCommentModal
+              visible={showCommentModal}
+              onClose={() => setShowCommentModal(false)}
+              tableNumber={selectedTable}
+              timestamp={getLatestKitchenTimestamp()}
+              currentComment={pendingComment || (getKitchenCommentFunc ? getKitchenCommentFunc(selectedTable, getLatestKitchenTimestamp()) : null)}
+              onSave={(table, timestamp, comment) => {
+                if (comment.trim()) {
+                  // Guardar como comentario pendiente para la próxima comanda
+                  setPendingComment(comment);
+                  // También guardar con el timestamp actual si existe (para mostrar en comandas anteriores)
+                  if (setKitchenCommentFunc && getLatestKitchenTimestamp()) {
+                    setKitchenCommentFunc(table, getLatestKitchenTimestamp(), comment);
+                  }
+                } else {
+                  // Si el comentario está vacío, limpiar el pendiente
+                  setPendingComment(null);
+                }
+              }}
+            />
           )}
         </>
       )}
@@ -720,6 +751,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     borderWidth: 2,
+  },
+  commentButton: {
+    backgroundColor: '#9C27B0',
+    borderColor: '#7B1FA2',
+  },
+  commentButtonContainer: {
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  commentButtonStandalone: {
+    backgroundColor: '#9C27B0',
+    borderColor: '#7B1FA2',
+    borderWidth: 2,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
+  },
+  commentButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   printSaladsButton: {
     backgroundColor: '#90CAF9',

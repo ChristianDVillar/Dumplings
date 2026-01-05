@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   TABLE_DISCOUNTS: '@dumplings:tableDiscounts',
   TABLE_KITCHEN_TIMESTAMPS: '@dumplings:tableKitchenTimestamps',
   COMPLETED_KITCHEN_ORDERS: '@dumplings:completedKitchenOrders',
+  TABLE_KITCHEN_COMMENTS: '@dumplings:tableKitchenComments',
   MENU_DATA: '@dumplings:menuData',
   APP_SETTINGS: '@dumplings:appSettings'
 };
@@ -173,6 +174,20 @@ class StorageService {
    */
   async loadAppSettings() {
     return this.load(STORAGE_KEYS.APP_SETTINGS);
+  }
+
+  /**
+   * Guarda los comentarios de las comandas
+   */
+  async saveKitchenComments(comments) {
+    return this.save(STORAGE_KEYS.TABLE_KITCHEN_COMMENTS, comments);
+  }
+
+  /**
+   * Carga los comentarios de las comandas
+   */
+  async loadKitchenComments() {
+    return this.load(STORAGE_KEYS.TABLE_KITCHEN_COMMENTS);
   }
 }
 

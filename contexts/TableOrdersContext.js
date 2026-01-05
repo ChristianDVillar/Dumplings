@@ -19,6 +19,7 @@ export const TableOrdersProvider = ({ children }) => {
   const [tableDiscounts, setTableDiscounts] = useState({});
   const [tableKitchenTimestamps, setTableKitchenTimestamps] = useState({}); // Array de timestamps de cuando se enviaron comandas a cocina (múltiples timers por mesa)
   const [completedKitchenOrders, setCompletedKitchenOrders] = useState({}); // Comandas marcadas como completadas: { tableNumber: { timestamp: orderIds[] } }
+  const [tableKitchenComments, setTableKitchenComments] = useState({}); // Comentarios de comandas: { tableNumber: { timestamp: comment } }
   const [isLoading, setIsLoading] = useState(true);
 
   // Cargar datos guardados al iniciar
@@ -26,12 +27,13 @@ export const TableOrdersProvider = ({ children }) => {
     const loadPersistedData = async () => {
       try {
         setIsLoading(true);
-        const [orders, history, discounts, timestamps, completed] = await Promise.all([
+        const [orders, history, discounts, timestamps, completed, comments] = await Promise.all([
           storageService.loadTableOrders(),
           storageService.loadTableHistory(),
           storageService.loadTableDiscounts(),
           storageService.loadKitchenTimestamps(),
-          storageService.loadCompletedKitchenOrders()
+          storageService.loadCompletedKitchenOrders(),
+          storageService.loadKitchenComments()
         ]);
 
         if (orders) setTableOrders(orders);
@@ -39,6 +41,7 @@ export const TableOrdersProvider = ({ children }) => {
         if (discounts) setTableDiscounts(discounts);
         if (timestamps) setTableKitchenTimestamps(timestamps);
         if (completed) setCompletedKitchenOrders(completed);
+        if (comments) setTableKitchenComments(comments);
       } catch (error) {
         console.error('[TableOrdersContext] Error cargando datos:', error);
       } finally {
@@ -59,13 +62,14 @@ export const TableOrdersProvider = ({ children }) => {
         storageService.saveTableHistory(tableHistory),
         storageService.saveTableDiscounts(tableDiscounts),
         storageService.saveKitchenTimestamps(tableKitchenTimestamps),
-        storageService.saveCompletedKitchenOrders(completedKitchenOrders)
+        storageService.saveCompletedKitchenOrders(completedKitchenOrders),
+        storageService.saveKitchenComments(tableKitchenComments)
       ]);
     };
 
     const timeoutId = setTimeout(saveData, 1000); // Debounce de 1 segundo
     return () => clearTimeout(timeoutId);
-  }, [tableOrders, tableHistory, tableDiscounts, tableKitchenTimestamps, completedKitchenOrders, isLoading]);
+  }, [tableOrders, tableHistory, tableDiscounts, tableKitchenTimestamps, completedKitchenOrders, tableKitchenComments, isLoading]);
 
   /**
    * Agrega un item al pedido de una mesa
@@ -332,6 +336,7 @@ export const TableOrdersProvider = ({ children }) => {
    * Establece el timestamp de cuando se envió una comanda a cocina
    * Agrega un nuevo timestamp al array en lugar de reemplazar el anterior.
    * Esto permite mantener múltiples timers por mesa (uno por cada envío).
+   * @returns {number} El timestamp creado
    */
   const setKitchenTimestamp = (tableNumber) => {
     const table = orderService.normalizeTableNumber(tableNumber);
@@ -343,6 +348,7 @@ export const TableOrdersProvider = ({ children }) => {
         [table]: [...existingTimestamps, timestamp] // Agrega nuevo timestamp sin eliminar los anteriores
       };
     });
+    return timestamp; // Retornar el timestamp para asociarlo con comentarios
   };
 
   /**
@@ -419,6 +425,47 @@ export const TableOrdersProvider = ({ children }) => {
     return completedKitchenOrders[table] || completedKitchenOrders[String(table)] || {};
   };
 
+  /**
+   * Establece un comentario para una comanda específica (por mesa y timestamp)
+   * @param {number} tableNumber - Número de mesa
+   * @param {number} timestamp - Timestamp de la comanda
+   * @param {string} comment - Comentario a agregar
+   */
+  const setKitchenComment = (tableNumber, timestamp, comment) => {
+    const table = orderService.normalizeTableNumber(tableNumber);
+    setTableKitchenComments(prev => {
+      const tableComments = prev[table] || prev[String(table)] || {};
+      return {
+        ...prev,
+        [table]: {
+          ...tableComments,
+          [timestamp]: comment,
+          [String(timestamp)]: comment
+        },
+        [String(table)]: {
+          ...(prev[String(table)] || {}),
+          [timestamp]: comment,
+          [String(timestamp)]: comment
+        }
+      };
+    });
+  };
+
+  /**
+   * Obtiene el comentario de una comanda específica
+   * @param {number} tableNumber - Número de mesa
+   * @param {number} timestamp - Timestamp de la comanda
+   * @returns {string|null} - Comentario o null si no existe
+   */
+  const getKitchenComment = (tableNumber, timestamp) => {
+    const table = orderService.normalizeTableNumber(tableNumber);
+    const tableCommentsNum = tableKitchenComments[table] || {};
+    const tableCommentsStr = tableKitchenComments[String(table)] || {};
+    const tableComments = { ...tableCommentsNum, ...tableCommentsStr };
+    
+    return tableComments[timestamp] || tableComments[String(timestamp)] || null;
+  };
+
   return (
     <TableOrdersContext.Provider
       value={{
@@ -445,7 +492,10 @@ export const TableOrdersProvider = ({ children }) => {
         markKitchenOrderCompleted,
         isKitchenOrderCompleted,
         getCompletedKitchenOrders,
-        completedKitchenOrders
+        completedKitchenOrders,
+        setKitchenComment,
+        getKitchenComment,
+        tableKitchenComments
       }}
     >
       {children}

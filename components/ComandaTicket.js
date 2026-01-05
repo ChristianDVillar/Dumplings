@@ -5,7 +5,7 @@ import { getCategoryDisplayName } from '../utils/menuCategories';
 /**
  * Componente para mostrar una comanda formateada como ticket
  */
-const ComandaTicket = ({ tableNumber, orders, type, date, showPrices = true }) => {
+const ComandaTicket = ({ tableNumber, orders, type, date, showPrices = true, comment = null }) => {
   // Agrupar por categoría
   const grouped = {};
   orders.forEach(order => {
@@ -36,6 +36,15 @@ const ComandaTicket = ({ tableNumber, orders, type, date, showPrices = true }) =
         </View>
         <View style={styles.headerDivider} />
       </View>
+
+      {/* Comentario */}
+      {comment && (
+        <View style={styles.commentSection}>
+          <Text style={styles.commentLabel}>💬 COMENTARIO:</Text>
+          <Text style={styles.commentText}>{comment}</Text>
+          <View style={styles.commentDivider} />
+        </View>
+      )}
 
       {/* Items */}
       <View style={styles.itemsContainer}>
@@ -216,6 +225,33 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  commentSection: {
+    backgroundColor: '#FFF9C4',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 15,
+    marginTop: 5,
+  },
+  commentLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FF6B00',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  commentText: {
+    fontSize: 13,
+    color: '#333',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  commentDivider: {
+    height: 1,
+    backgroundColor: '#FFD700',
+    marginTop: 8,
   },
 });
 

@@ -61,7 +61,9 @@ function AppContent() {
     getTableHistory,
     getTableHistoryTotal,
     setKitchenTimestamp,
-    getKitchenTimestamp
+    getKitchenTimestamp,
+    getKitchenComment,
+    setKitchenComment
   } = useTableOrdersContext();
 
   // Estados para modales
@@ -270,6 +272,8 @@ function AppContent() {
           onPayItems={(orderIds) => payTableItems(selectedTable, orderIds)}
           onPayAll={() => payTableItems(selectedTable, null)}
           setKitchenTimestamp={setKitchenTimestamp}
+          getKitchenComment={getKitchenComment}
+          setKitchenComment={setKitchenComment}
         />
       )}
 

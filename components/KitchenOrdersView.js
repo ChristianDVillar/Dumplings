@@ -21,7 +21,8 @@ const KitchenOrdersView = () => {
     isKitchenOrderCompleted,
     getCompletedKitchenOrders,
     tableKitchenTimestamps,
-    completedKitchenOrders
+    completedKitchenOrders,
+    getKitchenComment
   } = useTableOrdersContext();
   const { lastUpdate, setLastUpdate } = useAppContext();
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -202,6 +203,7 @@ const KitchenOrdersView = () => {
                     type="kitchen"
                     date={new Date(orderData.timestamp).toISOString()}
                     showPrices={false}
+                    comment={getKitchenComment(orderData.tableNumber, orderData.timestamp)}
                   />
                 </View>
               </View>
