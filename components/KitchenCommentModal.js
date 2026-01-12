@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
+import { useAppContext } from '../contexts/AppContext';
+import { useTranslations } from '../utils/translations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isMobile = SCREEN_WIDTH < 768;
 
 const KitchenCommentModal = ({ visible, onClose, tableNumber, timestamp, currentComment, onSave }) => {
   const [comment, setComment] = useState('');
+  const { language } = useAppContext();
+  const t = useTranslations(language);
 
   useEffect(() => {
     if (visible) {
@@ -28,15 +32,15 @@ const KitchenCommentModal = ({ visible, onClose, tableNumber, timestamp, current
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, isMobile && styles.modalContentMobile]}>
           <Text style={styles.modalTitle}>
-            💬 Comentario para Comanda
+            {t.comments.title}
           </Text>
           <Text style={styles.modalSubtitle}>
-            Mesa {tableNumber} - {timestamp ? new Date(timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}
+            {t.comments.subtitle(tableNumber, timestamp ? new Date(timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '')}
           </Text>
 
           <TextInput
             style={[styles.commentInput, isMobile && styles.commentInputMobile]}
-            placeholder="Escribe un comentario para esta comanda (ej: Sin cebolla, Sin gluten, Urgente, etc.)"
+            placeholder={t.comments.placeholder}
             placeholderTextColor="#999"
             value={comment}
             onChangeText={setComment}
@@ -46,7 +50,7 @@ const KitchenCommentModal = ({ visible, onClose, tableNumber, timestamp, current
             maxLength={200}
           />
           <Text style={styles.charCount}>
-            {comment.length}/200 caracteres
+            {t.comments.characters(comment.length, 200)}
           </Text>
 
           <View style={styles.modalButtons}>
@@ -54,13 +58,13 @@ const KitchenCommentModal = ({ visible, onClose, tableNumber, timestamp, current
               style={[styles.button, styles.cancelButton]}
               onPress={onClose}
             >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
+              <Text style={styles.cancelButtonText}>{t.common.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.saveButton]}
               onPress={handleSave}
             >
-              <Text style={styles.saveButtonText}>Guardar</Text>
+              <Text style={styles.saveButtonText}>{t.common.save}</Text>
             </TouchableOpacity>
           </View>
         </View>

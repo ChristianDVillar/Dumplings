@@ -4,6 +4,7 @@ import { groupMenuByCategory, MENU_CATEGORIES, getCategoryDisplayName } from '..
 import MenuItem from './MenuItem';
 import { menuItemStyles } from '../styles/menuItemStyles';
 import { menuService } from '../services/menuService';
+import { useAppContext } from '../contexts/AppContext';
 
 const MenuByCategory = ({
   menuData,
@@ -16,6 +17,7 @@ const MenuByCategory = ({
   onAddDrink,
   onAddItem
 }) => {
+  const { language } = useAppContext();
   // Estado para rastrear qué categorías están expandidas
   const [expandedCategories, setExpandedCategories] = useState(new Set());
 
@@ -28,8 +30,8 @@ const MenuByCategory = ({
     if (!searchQuery.trim()) {
       return items;
     }
-    return menuService.searchItems(items, searchQuery);
-  }, [menuData, searchQuery]);
+    return menuService.searchItems(items, searchQuery, language);
+  }, [menuData, searchQuery, language]);
 
   // Agrupar por categoría
   const { grouped, sortedCategories } = useMemo(() => {

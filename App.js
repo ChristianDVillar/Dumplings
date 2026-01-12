@@ -24,11 +24,13 @@ import AdminView from './components/AdminView';
 import Login from './components/Login';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import QRScannerView from './components/QRScannerView';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { TableOrdersProvider, useTableOrdersContext } from './contexts/TableOrdersContext';
 import { MenuProvider, useMenuContext } from './contexts/MenuContext';
 import { useMenuHandlers } from './hooks/useMenuHandlers';
 import { useOrderHandlers } from './hooks/useOrderHandlers';
+import { useTranslations } from './utils/translations';
 
 // Componente principal de la aplicación
 function AppContent() {
@@ -37,10 +39,31 @@ function AppContent() {
   const [selectedTable, setSelectedTable] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('tables'); // 'tables' o 'menu'
   const [showOrderView, setShowOrderView] = useState(false);
+  const [clientMode, setClientMode] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+
+  // Detectar parámetros de URL al cargar (modo cliente desde QR)
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tableParam = urlParams.get('table');
+      const modeParam = urlParams.get('mode');
+      
+      if (modeParam === 'client' && tableParam) {
+        const tableNumber = parseInt(tableParam, 10);
+        if (!isNaN(tableNumber)) {
+          setSelectedTable(tableNumber);
+          setClientMode(true);
+          setCurrentScreen('menu');
+        }
+      }
+    }
+  }, []);
 
   // Contexto de la aplicación
-  const { isAuthenticated, userRole, login, logout, currentView, setLastUpdate } = useAppContext();
+  const { isAuthenticated, userRole, login, logout, currentView, setLastUpdate, language } = useAppContext();
   const { menuData } = useMenuContext();
+  const t = useTranslations(language);
   
   // Hook personalizado para manejar pedidos (desde contexto compartido)
   // IMPORTANTE: Todos los hooks deben llamarse antes de cualquier return condicional
@@ -163,9 +186,9 @@ function AppContent() {
         <StatusBar barStyle="light-content" />
         <Header />
         <View style={styles.kitchenHeader}>
-          <Text style={styles.kitchenTitle}>Vista de Cocina</Text>
+          <Text style={styles.kitchenTitle}>{t.views.kitchenView}</Text>
           <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+            <Text style={styles.logoutButtonText}>{t.views.logoutButton}</Text>
           </TouchableOpacity>
         </View>
         <KitchenOrdersView />
@@ -196,6 +219,77 @@ function AppContent() {
         <ViewSelector />
         <ClientView />
         <Footer />
+      </SafeAreaView>
+    );
+  }
+
+  // Modo cliente desde QR (sin autenticación)
+  if (clientMode && selectedTable) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.clientModeHeader}>
+          <Text style={styles.clientModeTitle}>🍜 Mesa {selectedTable}</Text>
+          <Text style={styles.clientModeSubtitle}>Agrega items a tu comanda</Text>
+        </View>
+
+        {/* Vista de Pedido del Cliente */}
+        {currentOccupied && (
+          <OrderView
+            selectedTable={selectedTable}
+            orders={currentOrders}
+            total={currentTotal}
+            totalWithDiscount={currentTotalWithDiscount}
+            discount={currentDiscount}
+            occupied={currentOccupied}
+            historyTotal={historyTotal}
+            onRemoveItem={removeItemFromTable}
+            onUpdateQuantity={updateItemQuantity}
+            onClearTable={() => {}}
+            onShowChangeTable={() => {}}
+            onShowDiscount={() => {}}
+            onPayItems={() => {}}
+            onPayAll={() => {}}
+            setKitchenTimestamp={() => {}}
+            getKitchenComment={() => null}
+            setKitchenComment={() => {}}
+            isClientMode={true}
+          />
+        )}
+
+        {/* Barra de Búsqueda */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t.common.searchPlaceholder}
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={() => setSearchQuery('')}
+            >
+              <Text style={styles.clearButtonText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Menú agrupado por categorías */}
+        <MenuByCategory
+          menuData={menuData}
+          searchQuery={searchQuery}
+          selectedTable={selectedTable}
+          selectedExtras={selectedExtras}
+          selectedDrink={selectedDrink}
+          onToggleExtra={toggleExtra}
+          onSelectDrink={handleSelectDrink}
+          onAddDrink={handleAddDrink}
+          onAddItem={handleAddItem}
+        />
       </SafeAreaView>
     );
   }
@@ -298,7 +392,7 @@ function AppContent() {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar por número o nombre..."
+          placeholder={t.common.searchPlaceholder}
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -443,6 +537,27 @@ const styles = StyleSheet.create({
   orderToggleArrow: {
     color: '#1A1A1A',
     fontSize: 12,
+  },
+  clientModeHeader: {
+    backgroundColor: '#FFD700',
+    padding: 20,
+    paddingTop: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FFA500',
+    alignItems: 'center',
+  },
+  clientModeTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  clientModeSubtitle: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    textAlign: 'center',
+    opacity: 0.8,
   },
   kitchenHeader: {
     flexDirection: 'row',

@@ -12,7 +12,8 @@ const STORAGE_KEYS = {
   COMPLETED_KITCHEN_ORDERS: '@dumplings:completedKitchenOrders',
   TABLE_KITCHEN_COMMENTS: '@dumplings:tableKitchenComments',
   MENU_DATA: '@dumplings:menuData',
-  APP_SETTINGS: '@dumplings:appSettings'
+  APP_SETTINGS: '@dumplings:appSettings',
+  DRINK_OPTIONS: '@dumplings:drinkOptions'
 };
 
 class StorageService {
@@ -188,6 +189,20 @@ class StorageService {
    */
   async loadKitchenComments() {
     return this.load(STORAGE_KEYS.TABLE_KITCHEN_COMMENTS);
+  }
+
+  /**
+   * Guarda los tipos de refrescos
+   */
+  async saveDrinkOptions(drinkOptions) {
+    return this.save(STORAGE_KEYS.DRINK_OPTIONS, drinkOptions);
+  }
+
+  /**
+   * Carga los tipos de refrescos
+   */
+  async loadDrinkOptions() {
+    return this.load(STORAGE_KEYS.DRINK_OPTIONS);
   }
 }
 

@@ -16,6 +16,9 @@ export const AppProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null); // 'admin', 'general' o 'kitchen'
   const [username, setUsername] = useState(null);
   
+  // Idioma de la aplicación ('es' o 'en')
+  const [language, setLanguage] = useState('es');
+  
   // Rol/Vista actual: 'waiter' (camarero), 'kitchen' (cocina), 'waiter-orders' (comandas camarero), 'client' (cliente)
   const [currentView, setCurrentView] = useState('waiter');
   
@@ -64,7 +67,9 @@ export const AppProvider = ({ children }) => {
         lastUpdate,
         setLastUpdate,
         clientTable,
-        setClientTable
+        setClientTable,
+        language,
+        setLanguage
       }}
     >
       {children}

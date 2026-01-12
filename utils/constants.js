@@ -53,6 +53,8 @@ export const ORDER_TYPES = {
 // Configuración de mesas
 export const TABLE_CONFIG = {
   REGULAR: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15],
+  TERRACE_START: 100,
+  TERRACE_END: 108,
   TAKEAWAY_START: 200,
   TAKEAWAY_END: 240,
   ITEMS_PER_ROW: 10
@@ -68,7 +70,7 @@ export const EXTRA_OPTIONS = ['gambas', 'pollo', 'ternera', 'verduras'];
 
 // Opciones de bebidas
 export const DRINK_OPTIONS = [
-  'Coca',
+  'Coca Cola',
   'Coca Zero',
   'Fanta Naranja',
   'Fanta Limón',

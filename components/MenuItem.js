@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, Dimensions } from 'react-native';
 import { getTotalPrice } from '../utils/helpers';
-import { EXTRA_OPTIONS, DRINK_OPTIONS } from '../utils/constants';
+import { EXTRA_OPTIONS } from '../utils/constants';
+import { useMenuContext } from '../contexts/MenuContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isMobile = SCREEN_WIDTH < 768;
@@ -17,8 +18,19 @@ const MenuItem = ({
   onAddItem,
   styles: customStyles
 }) => {
+  const { drinkOptions } = useMenuContext();
   const isMainDish = item.category === 'PRINCIPALES';
-  const isRefrescos = item.id === 93;
+  // Detectar refrescos por categoría y nombre, no solo por ID
+  const isRefrescos = item.category === 'BEBIDAS' && (
+    (item.nameEs && item.nameEs.toLowerCase().includes('refresco')) ||
+    (item.nameEn && item.nameEn.toLowerCase().includes('soft drink')) ||
+    (item.nameEn && item.nameEn.toLowerCase().includes('soda')) ||
+    (item.nameZh && (item.nameZh.includes('汽水') || item.nameZh.includes('可乐')))
+  );
+  // Usar tipos de refrescos específicos del item o los globales
+  const availableDrinkOptions = item.drinkOptions && item.drinkOptions.length > 0 
+    ? item.drinkOptions 
+    : (drinkOptions || []);
   const extras = selectedExtras[item.id] || [];
   const totalPrice = getTotalPrice(item, selectedExtras);
   const selectedDrinkType = selectedDrink[item.id];
@@ -136,7 +148,7 @@ const MenuItem = ({
         <View style={customStyles.drinkContainer}>
           <Text style={customStyles.drinkTitle}>Toca para agregar el refresco:</Text>
           <View style={customStyles.drinkButtons}>
-            {DRINK_OPTIONS.map((drink) => {
+            {availableDrinkOptions.map((drink) => {
               const isSelected = selectedDrinkType === drink;
               return (
                 <TouchableOpacity

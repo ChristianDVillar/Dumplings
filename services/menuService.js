@@ -21,33 +21,87 @@ class MenuService {
    * Busca items en el menú
    * @param {Array} menuItems - Items del menú
    * @param {string} query - Término de búsqueda
+   * @param {string} language - Idioma seleccionado ('es', 'en', 'zh')
    * @returns {Array} - Items encontrados
    */
-  searchItems(menuItems, query) {
+  searchItems(menuItems, query, language = 'es') {
     if (!query || !query.trim()) return menuItems;
     
     const searchTerm = query.toLowerCase().trim();
     
+    // Términos relacionados con refrescos para búsqueda mejorada
+    const softDrinkTerms = ['refresco', 'refrescos', 'coca', 'cola', 'fanta', 'sprite', 'pepsi', '7up', 'naranja', 'limon', 'limón', 'gaseosa', 'soda', 'soft drink', 'drink', 'bebida', 'bebidas'];
+    const isSoftDrinkSearch = softDrinkTerms.some(term => searchTerm.includes(term));
+    
     return menuItems.filter(item => {
-      // Búsqueda por número
+      // Si la búsqueda es de refrescos y el item es de la categoría BEBIDAS con "refresco" en el nombre
+      if (isSoftDrinkSearch && item.category === 'BEBIDAS') {
+        const itemName = (item.nameEs || '').toLowerCase();
+        if (itemName.includes('refresco') || itemName.includes('500ml')) {
+          return true;
+        }
+      }
+      
+      // Búsqueda por número (siempre funciona)
       if (item.number && item.number.toString().includes(searchTerm)) {
         return true;
       }
       
-      // Búsqueda por nombre en español
-      if (item.nameEs && item.nameEs.toLowerCase().includes(searchTerm)) {
-        return true;
+      // Búsqueda priorizada según el idioma seleccionado
+      if (language === 'es') {
+        // Priorizar español
+        if (item.nameEs && item.nameEs.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        if (item.nameEn && item.nameEn.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+      } else if (language === 'en') {
+        // Priorizar inglés
+        if (item.nameEn && item.nameEn.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        if (item.nameEs && item.nameEs.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+      } else if (language === 'zh') {
+        // Para chino, buscar en ambos idiomas
+        if (item.nameEs && item.nameEs.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        if (item.nameEn && item.nameEn.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        // También buscar términos comunes en chino que puedan estar en los nombres
+        // Por ejemplo, buscar "gyoza", "dumpling", etc.
+      } else {
+        // Por defecto, buscar en ambos
+        if (item.nameEs && item.nameEs.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+        if (item.nameEn && item.nameEn.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
       }
       
-      // Búsqueda por nombre en inglés
-      if (item.nameEn && item.nameEn.toLowerCase().includes(searchTerm)) {
-        return true;
-      }
-      
-      // Búsqueda por descripción
-      const description = item.descriptionEs || item.description || '';
-      if (description.toLowerCase().includes(searchTerm)) {
-        return true;
+      // Búsqueda por descripción según idioma
+      if (language === 'es') {
+        const description = item.descriptionEs || item.description || '';
+        if (description.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+      } else if (language === 'en') {
+        const description = item.descriptionEn || item.description || '';
+        if (description.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
+      } else {
+        // Para chino u otros, buscar en ambas descripciones
+        const descriptionEs = item.descriptionEs || item.description || '';
+        const descriptionEn = item.descriptionEn || '';
+        if (descriptionEs.toLowerCase().includes(searchTerm) || descriptionEn.toLowerCase().includes(searchTerm)) {
+          return true;
+        }
       }
       
       // Búsqueda por categoría

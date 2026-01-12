@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Platform, Dimensions, Modal, TextInput } from 'react-native';
 import { generatePrintData, formatPrintText, filterSaladsAndDrinks, filterKitchenOrders } from '../utils/printHelpers';
 import { useAppContext } from '../contexts/AppContext';
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import KitchenCommentModal from './KitchenCommentModal';
+import { useTranslations } from '../utils/translations';
 
 const OrderView = ({
   selectedTable,
@@ -22,13 +23,18 @@ const OrderView = ({
   onPayAll,
   setKitchenTimestamp,
   getKitchenComment,
-  setKitchenComment
+  setKitchenComment,
+  isClientMode = false
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [pendingComment, setPendingComment] = useState(null); // Comentario pendiente para la próxima comanda
-  const { currentView, setLastUpdate, userRole } = useAppContext();
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cash'
+  const [cashReceived, setCashReceived] = useState('');
+  const { currentView, setLastUpdate, userRole, language } = useAppContext();
   const { getKitchenTimestamp: getKitchenTimestampFromContext, getKitchenComment: getKitchenCommentFromContext, setKitchenComment: setKitchenCommentFromContext } = useTableOrdersContext();
+  const t = useTranslations(language);
   
   // Determinar si el usuario es camarero (puede agregar comentarios)
   const isWaiterView = currentView === 'waiter' || userRole === 'general';
@@ -52,8 +58,8 @@ const OrderView = ({
     const kitchenOrders = filterKitchenOrders(orders);
     const saladsAndDrinks = filterSaladsAndDrinks(orders);
     
-    if (kitchenOrders.length === 0 && saladsAndDrinks.length === 0) {
-      Alert.alert('Info', 'No hay items para enviar');
+      if (kitchenOrders.length === 0 && saladsAndDrinks.length === 0) {
+      Alert.alert(t.common.error, t.orders.noItemsToSend);
       return;
     }
     
@@ -170,51 +176,53 @@ const OrderView = ({
             </Text>
           </View>
         </View>
-        <View style={styles.headerButtons}>
-          {occupied && (
-            <>
+        {!isClientMode && (
+          <View style={styles.headerButtons}>
+            {occupied && (
+              <>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={onShowChangeTable}
+                >
+                  <Text style={styles.actionButtonText}>Cambiar Mesa</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={onShowDiscount}
+                >
+                  <Text style={styles.actionButtonText}>{t.orders.applyDiscount}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {occupied && (
               <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onShowChangeTable}
+                style={styles.clearButton}
+                onPress={() => {
+                  Alert.alert(
+                    t.orders.clearTableTitle,
+                    t.orders.clearTableMessage,
+                    [
+                      { text: t.common.cancel, style: 'cancel' },
+                      {
+                        text: t.orders.clearTable,
+                        style: 'destructive',
+                        onPress: () => onClearTable(selectedTable)
+                      }
+                    ]
+                  );
+                }}
               >
-                <Text style={styles.actionButtonText}>Cambiar Mesa</Text>
+                <Text style={styles.clearButtonText}>Limpiar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onShowDiscount}
-              >
-                <Text style={styles.actionButtonText}>Descuento</Text>
-              </TouchableOpacity>
-            </>
-          )}
-          {occupied && (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={() => {
-                Alert.alert(
-                  'Limpiar Mesa',
-                  '¿Limpiar la mesa? Esto eliminará todos los pedidos.',
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                      text: 'Limpiar',
-                      style: 'destructive',
-                      onPress: () => onClearTable(selectedTable)
-                    }
-                  ]
-                );
-              }}
-            >
-              <Text style={styles.clearButtonText}>Limpiar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+            )}
+          </View>
+        )}
       </View>
 
       
       {orders.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay pedidos en esta mesa</Text>
+          <Text style={styles.emptyText}>{t.tables.noOrders}</Text>
         </View>
       ) : (
         <ScrollView 
@@ -250,7 +258,7 @@ const OrderView = ({
                         ) : null}
                         {order.extras && order.extras.length > 0 ? (
                           <Text style={styles.orderItemExtras}>
-                            Extras: {order.extras.join(', ')}
+                            {t.orders.extras} {order.extras.join(', ')}
                           </Text>
                         ) : null}
                         {order.drink ? (
@@ -302,7 +310,7 @@ const OrderView = ({
             onPress={() => setShowCommentModal(true)}
           >
             <Text style={styles.commentButtonText}>
-              💬 {pendingComment ? 'Editar Comentario' : 'Agregar Comentario'}
+              {pendingComment ? t.orders.editComment : t.orders.addComment}
             </Text>
           </TouchableOpacity>
         </View>
@@ -311,73 +319,62 @@ const OrderView = ({
       {occupied && (
         <>
           <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Subtotal:</Text>
+            <Text style={styles.totalLabel}>{t.orders.subtotal}</Text>
             <Text style={styles.totalAmount}>{total.toFixed(2)}€</Text>
           </View>
           {discount > 0 && (
             <View style={styles.discountContainer}>
-              <Text style={styles.discountLabel}>Descuento:</Text>
+              <Text style={styles.discountLabel}>{t.orders.discount}</Text>
               <Text style={styles.discountAmount}>-{discount.toFixed(2)}€</Text>
             </View>
           )}
           <View style={styles.finalTotalContainer}>
-            <Text style={styles.finalTotalLabel}>Total a Pagar:</Text>
+            <Text style={styles.finalTotalLabel}>{t.orders.totalToPay}</Text>
             <Text style={styles.finalTotalAmount}>{totalWithDiscount.toFixed(2)}€</Text>
           </View>
-          {historyTotal > 0 && (
+              {historyTotal > 0 && (
             <View style={styles.historyContainer}>
-              <Text style={styles.historyLabel}>Total Histórico:</Text>
+              <Text style={styles.historyLabel}>{t.orders.historyTotal}</Text>
               <Text style={styles.historyAmount}>{historyTotal.toFixed(2)}€</Text>
             </View>
           )}
-          <View style={styles.paymentButtons}>
-            {selectedItems.length > 0 && (
-              <TouchableOpacity
-                style={[styles.payButton, styles.paySelectedButton]}
-                onPress={() => {
-                  Alert.alert(
-                    'Pagar Items Seleccionados',
-                    `¿Pagar ${selectedItems.length} item(s) seleccionado(s)?`,
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      {
-                        text: 'Pagar',
-                        onPress: () => {
-                          onPayItems(selectedItems);
-                          setSelectedItems([]);
+          {!isClientMode && (
+            <View style={styles.paymentButtons}>
+              {selectedItems.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.payButton, styles.paySelectedButton]}
+                  onPress={() => {
+                    Alert.alert(
+                      t.orders.paySelectedTitle,
+                      t.orders.paySelectedMessage(selectedItems.length),
+                      [
+                        { text: t.common.cancel, style: 'cancel' },
+                        {
+                          text: t.payment.pay,
+                          onPress: () => {
+                            onPayItems(selectedItems);
+                            setSelectedItems([]);
+                          }
                         }
-                      }
-                    ]
-                  );
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.payButtonText}>
+                    {t.orders.paySelected(selectedItems.length)}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.payButton, styles.payAllButton]}
+                onPress={() => {
+                  setShowPaymentModal(true);
                 }}
               >
-                <Text style={styles.payButtonText}>
-                  Pagar Seleccionados ({selectedItems.length})
-                </Text>
+                <Text style={styles.payButtonText}>{t.orders.payAll}</Text>
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.payButton, styles.payAllButton]}
-              onPress={() => {
-                Alert.alert(
-                  'Pagar Toda la Cuenta',
-                  `Total: ${totalWithDiscount.toFixed(2)}€\n¿Confirmar pago?`,
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                      text: 'Pagar',
-                      onPress: () => {
-                        onPayAll();
-                        setSelectedItems([]);
-                      }
-                    }
-                  ]
-                );
-              }}
-            >
-              <Text style={styles.payButtonText}>Pagar Todo</Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+          )}
           
           {/* Botón de envío solo para camarero */}
           {isWaiterView && occupied && orders.length > 0 && (
@@ -387,7 +384,7 @@ const OrderView = ({
                 onPress={handleSendAllToKitchen}
               >
                 <Text style={styles.printButtonText}>
-                  📋 Enviar Comanda Completa
+                  {t.orders.sendToKitchen}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -416,6 +413,111 @@ const OrderView = ({
               }}
             />
           )}
+
+          {/* Modal de pago */}
+          <Modal
+            visible={showPaymentModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowPaymentModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.paymentModal}>
+                <Text style={styles.paymentTitle}>{t.payment.title}</Text>
+                <Text style={styles.paymentAmount}>{t.payment.total} {totalWithDiscount.toFixed(2)}€</Text>
+
+                <View style={styles.methodContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.methodButton,
+                      paymentMethod === 'card' && styles.methodButtonActive
+                    ]}
+                    onPress={() => {
+                      setPaymentMethod('card');
+                      setCashReceived('');
+                    }}
+                  >
+                    <Text style={[
+                      styles.methodButtonText,
+                      paymentMethod === 'card' && styles.methodButtonTextActive
+                    ]}>
+                      {t.payment.card}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.methodButton,
+                      paymentMethod === 'cash' && styles.methodButtonActive
+                    ]}
+                    onPress={() => setPaymentMethod('cash')}
+                  >
+                    <Text style={[
+                      styles.methodButtonText,
+                      paymentMethod === 'cash' && styles.methodButtonTextActive
+                    ]}>
+                      {t.payment.cash}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {paymentMethod === 'cash' && (
+                  <View style={styles.cashSection}>
+                    <Text style={styles.cashLabel}>{t.payment.cashReceived}</Text>
+                    <TextInput
+                      style={styles.cashInput}
+                      placeholder={t.payment.cashReceivedPlaceholder}
+                      placeholderTextColor="#888"
+                      keyboardType="numeric"
+                      value={cashReceived}
+                      onChangeText={setCashReceived}
+                    />
+                    <View style={styles.changeRow}>
+                      <Text style={styles.changeLabel}>{t.payment.change}</Text>
+                      <Text style={styles.changeValue}>
+                        {(() => {
+                          const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
+                          const change = received - totalWithDiscount;
+                          return change > 0 ? `${change.toFixed(2)}€` : '0.00€';
+                        })()}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalCancel]}
+                    onPress={() => {
+                      setShowPaymentModal(false);
+                      setPaymentMethod('card');
+                      setCashReceived('');
+                    }}
+                  >
+                    <Text style={styles.modalButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalConfirm]}
+                    onPress={() => {
+                      if (paymentMethod === 'cash') {
+                        const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
+                        if (received < totalWithDiscount) {
+                          Alert.alert(t.common.error, t.payment.invalidAmount);
+                          return;
+                        }
+                      }
+                      onPayAll();
+                      setSelectedItems([]);
+                      setShowPaymentModal(false);
+                      setPaymentMethod('card');
+                      setCashReceived('');
+                    }}
+                  >
+                    <Text style={styles.modalButtonText}>{t.payment.pay}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </>
       )}
     </View>
@@ -793,6 +895,116 @@ const styles = StyleSheet.create({
   printButtonText: {
     color: '#1A1A1A',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  paymentModal: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 420,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  paymentTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 8,
+  },
+  paymentAmount: {
+    fontSize: 16,
+    color: '#FFD700',
+    marginBottom: 16,
+  },
+  methodContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  methodButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    alignItems: 'center',
+    backgroundColor: '#3A3A3A',
+  },
+  methodButtonActive: {
+    backgroundColor: '#FFD700',
+  },
+  methodButtonText: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+  },
+  methodButtonTextActive: {
+    color: '#2A2A2A',
+  },
+  cashSection: {
+    backgroundColor: '#1F1F1F',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    marginBottom: 12,
+  },
+  cashLabel: {
+    color: '#FFD700',
+    marginBottom: 6,
+    fontWeight: 'bold',
+  },
+  cashInput: {
+    backgroundColor: '#2F2F2F',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    color: '#FFF',
+    padding: 10,
+    marginBottom: 10,
+  },
+  changeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  changeLabel: {
+    color: '#FFD700',
+    fontSize: 14,
+  },
+  changeValue: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 8,
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  modalCancel: {
+    backgroundColor: '#3A3A3A',
+  },
+  modalConfirm: {
+    backgroundColor: '#FFD700',
+  },
+  modalButtonText: {
+    color: '#2A2A2A',
     fontWeight: 'bold',
   },
 });

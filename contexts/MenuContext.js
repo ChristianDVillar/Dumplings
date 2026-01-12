@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { menuData as initialMenuData } from '../menuData';
 import { storageService } from '../services/storageService';
+import { DRINK_OPTIONS as initialDrinkOptions } from '../utils/constants';
 
 const MenuContext = createContext();
 
@@ -14,25 +15,63 @@ export const useMenuContext = () => {
 
 export const MenuProvider = ({ children }) => {
   const [menuData, setMenuData] = useState(initialMenuData);
+  const [drinkOptions, setDrinkOptions] = useState(initialDrinkOptions);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar menú guardado al iniciar
+  // Cargar menú y tipos de refrescos guardados al iniciar
   useEffect(() => {
-    const loadPersistedMenu = async () => {
+    const loadPersistedData = async () => {
       try {
         setIsLoading(true);
         const savedMenu = await storageService.loadMenuData();
         if (savedMenu && Array.isArray(savedMenu) && savedMenu.length > 0) {
-          setMenuData(savedMenu);
+          // Migración: actualizar "Coca" a "Coca Cola" en drinkOptions de items
+          const migratedMenu = savedMenu.map(item => {
+            if (item.drinkOptions && Array.isArray(item.drinkOptions)) {
+              const migratedDrinkOptions = item.drinkOptions.map(option => 
+                option === 'Coca' ? 'Coca Cola' : option
+              );
+              return { ...item, drinkOptions: migratedDrinkOptions };
+            }
+            return item;
+          });
+          setMenuData(migratedMenu);
+          
+          // Guardar menú migrado si hubo cambios
+          const hasChanges = savedMenu.some((item, index) => {
+            if (item.drinkOptions && Array.isArray(item.drinkOptions)) {
+              return item.drinkOptions.includes('Coca');
+            }
+            return false;
+          });
+          if (hasChanges) {
+            await storageService.saveMenuData(migratedMenu);
+          }
+        }
+        
+        const savedDrinkOptions = await storageService.loadDrinkOptions();
+        if (savedDrinkOptions && Array.isArray(savedDrinkOptions) && savedDrinkOptions.length > 0) {
+          // Migración: actualizar "Coca" a "Coca Cola" en tipos globales
+          const migratedDrinkOptions = savedDrinkOptions.map(option => 
+            option === 'Coca' ? 'Coca Cola' : option
+          );
+          
+          // Solo actualizar si hubo cambios
+          if (migratedDrinkOptions.some((opt, idx) => opt !== savedDrinkOptions[idx])) {
+            setDrinkOptions(migratedDrinkOptions);
+            await storageService.saveDrinkOptions(migratedDrinkOptions);
+          } else {
+            setDrinkOptions(savedDrinkOptions);
+          }
         }
       } catch (error) {
-        console.error('[MenuContext] Error cargando menú:', error);
+        console.error('[MenuContext] Error cargando datos:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadPersistedMenu();
+    loadPersistedData();
   }, []);
 
   // Guardar menú cuando cambie (con debounce)
@@ -46,6 +85,18 @@ export const MenuProvider = ({ children }) => {
     const timeoutId = setTimeout(saveMenu, 1000); // Debounce de 1 segundo
     return () => clearTimeout(timeoutId);
   }, [menuData, isLoading]);
+
+  // Guardar tipos de refrescos cuando cambien (con debounce)
+  useEffect(() => {
+    if (isLoading) return;
+    
+    const saveDrinkOptions = async () => {
+      await storageService.saveDrinkOptions(drinkOptions);
+    };
+
+    const timeoutId = setTimeout(saveDrinkOptions, 1000); // Debounce de 1 segundo
+    return () => clearTimeout(timeoutId);
+  }, [drinkOptions, isLoading]);
 
   const addMenuItem = (item) => {
     setMenuData(prev => [...prev, item]);
@@ -61,6 +112,31 @@ export const MenuProvider = ({ children }) => {
     setMenuData(prev => prev.filter(item => item.id !== itemId));
   };
 
+  const addDrinkOption = (drinkOption) => {
+    setDrinkOptions(prev => [...prev, drinkOption]);
+  };
+
+  const updateDrinkOption = (index, updatedOption) => {
+    setDrinkOptions(prev => {
+      const newOptions = [...prev];
+      newOptions[index] = updatedOption;
+      return newOptions;
+    });
+  };
+
+  const deleteDrinkOption = (index) => {
+    setDrinkOptions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const reorderDrinkOptions = (fromIndex, toIndex) => {
+    setDrinkOptions(prev => {
+      const newOptions = [...prev];
+      const [removed] = newOptions.splice(fromIndex, 1);
+      newOptions.splice(toIndex, 0, removed);
+      return newOptions;
+    });
+  };
+
   return (
     <MenuContext.Provider
       value={{
@@ -68,7 +144,13 @@ export const MenuProvider = ({ children }) => {
         setMenuData,
         addMenuItem,
         updateMenuItem,
-        deleteMenuItem
+        deleteMenuItem,
+        drinkOptions,
+        setDrinkOptions,
+        addDrinkOption,
+        updateDrinkOption,
+        deleteDrinkOption,
+        reorderDrinkOptions
       }}
     >
       {children}

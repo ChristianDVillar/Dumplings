@@ -3,9 +3,13 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform } from '
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
 import ClientTicket from './ClientTicket';
+import { useAppContext } from '../contexts/AppContext';
+import { useTranslations } from '../utils/translations';
 
 const ClientView = () => {
   const { getTableOrders, getTableTotal, getTableDiscount, getTableTotalWithDiscount, isTableOccupied, getTableHistory, tableOrders } = useTableOrdersContext();
+  const { language } = useAppContext();
+  const t = useTranslations(language);
   const [selectedTable, setSelectedTable] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const tables = generateTables();
@@ -58,16 +62,16 @@ const ClientView = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>👤 Vista del Cliente</Text>
+      <Text style={styles.title}>{t.client.title}</Text>
       
       {/* Lista de mesas con pedidos */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          Mesas con Pedidos {occupiedTables.length > 0 ? `(${occupiedTables.length})` : ''}
+          {t.client.tablesWithOrders(occupiedTables.length)}
         </Text>
         {occupiedTables.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No hay mesas con pedidos</Text>
+            <Text style={styles.emptyText}>{t.client.noTables}</Text>
           </View>
         ) : (
           <ScrollView 
@@ -125,7 +129,7 @@ const ClientView = () => {
             }}
           >
             <Text style={[styles.viewButtonText, !showHistory && styles.viewButtonTextActive]}>
-              Pedido Actual
+              {t.client.activeOrders}
             </Text>
           </TouchableOpacity>
           {history.length > 0 && (
@@ -140,7 +144,7 @@ const ClientView = () => {
               }}
             >
               <Text style={[styles.viewButtonText, showHistory && styles.viewButtonTextActive]}>
-                Comandas Pagadas ({history.length})
+                {t.client.paymentHistory} ({history.length})
               </Text>
             </TouchableOpacity>
           )}
@@ -150,7 +154,7 @@ const ClientView = () => {
       {/* Lista de comandas pagadas */}
       {selectedTable && showHistory && history.length > 0 && (
         <View style={styles.historyListContainer}>
-          <Text style={styles.historyListTitle}>Selecciona una comanda:</Text>
+          <Text style={styles.historyListTitle}>{t.client.paymentHistory}:</Text>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -232,13 +236,13 @@ const ClientView = () => {
 
       {selectedTable && showHistory && !selectedPayment && (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay comandas pagadas</Text>
+          <Text style={styles.emptyText}>{t.client.noHistory}</Text>
         </View>
       )}
 
       {selectedTable && activeOrders.length === 0 && history.length === 0 && (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay pedidos en esta mesa</Text>
+          <Text style={styles.emptyText}>{t.client.noActiveOrders}</Text>
         </View>
       )}
 

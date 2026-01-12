@@ -1,13 +1,50 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native';
 import { generateTables, groupTablesInRows } from '../utils/helpers';
+import { useAppContext } from '../contexts/AppContext';
+import { useTranslations } from '../utils/translations';
 
 const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
   const tables = generateTables();
-  const [showRegular, setShowRegular] = useState(true); // Por defecto mostrar mesas regulares
+  const [viewMode, setViewMode] = useState('regular'); // 'regular', 'terrace', 'takeaway'
+  const { language } = useAppContext();
+  const t = useTranslations(language);
+
+  const getViewTitle = () => {
+    switch (viewMode) {
+      case 'regular': return t.tables.regular;
+      case 'terrace': return t.tables.terrace;
+      case 'takeaway': return t.tables.takeaway;
+      default: return t.tables.tables;
+    }
+  };
 
   const toggleView = () => {
-    setShowRegular(!showRegular);
+    if (viewMode === 'regular') {
+      setViewMode('terrace');
+    } else if (viewMode === 'terrace') {
+      setViewMode('takeaway');
+    } else {
+      setViewMode('regular');
+    }
+  };
+
+  const getCurrentTables = () => {
+    switch (viewMode) {
+      case 'regular': return tables.regular;
+      case 'terrace': return tables.terrace;
+      case 'takeaway': return tables.takeaway;
+      default: return tables.regular;
+    }
+  };
+
+  const getTableCardStyle = () => {
+    if (viewMode === 'takeaway') {
+      return styles.tableCardTakeaway;
+    } else if (viewMode === 'terrace') {
+      return styles.tableCardTerrace;
+    }
+    return null;
   };
 
   return (
@@ -15,94 +52,54 @@ const TablesScreen = ({ onSelectTable, isTableOccupied, selectedTable }) => {
       {/* Título y Botón de Cambiar Vista */}
       <View style={styles.headerSection}>
         <Text style={styles.title}>
-          {showRegular ? 'Mesas Regulares' : 'Para Llevar'}
+          {getViewTitle()}
         </Text>
         <TouchableOpacity
           style={styles.toggleButton}
           onPress={toggleView}
         >
           <Text style={styles.toggleButtonText}>
-            Mesas
+            {t.tables.change}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Mesas Regulares */}
-      {showRegular && (
-        <View style={styles.section}>
-          <ScrollView 
-            showsVerticalScrollIndicator={true}
-            style={styles.tablesScroll}
-          >
-            {groupTablesInRows(tables.regular, 10).map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.tableRow}>
-                {row.map((table) => (
-                  <TouchableOpacity
-                    key={table}
-                    style={[
-                      styles.tableCard,
-                      selectedTable === table && styles.tableCardSelected,
-                      isTableOccupied(table) && styles.tableCardOccupied
-                    ]}
-                    onPress={() => onSelectTable(table)}
-                  >
-                    <Text style={[
-                      styles.tableNumber,
-                      selectedTable === table && styles.tableNumberSelected
-                    ]}>
-                      {table}
-                    </Text>
-                    {isTableOccupied(table) && (
-                      <View style={styles.occupiedIndicator}>
-                        <Text style={styles.occupiedText}>●</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Para Llevar */}
-      {!showRegular && (
-        <View style={styles.section}>
-          <ScrollView 
-            showsVerticalScrollIndicator={true}
-            style={styles.tablesScroll}
-          >
-            {groupTablesInRows(tables.takeaway, 10).map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.tableRow}>
-                {row.map((table) => (
-                  <TouchableOpacity
-                    key={table}
-                    style={[
-                      styles.tableCard,
-                      styles.tableCardTakeaway,
-                      selectedTable === table && styles.tableCardSelected,
-                      isTableOccupied(table) && styles.tableCardOccupied
-                    ]}
-                    onPress={() => onSelectTable(table)}
-                  >
-                    <Text style={[
-                      styles.tableNumber,
-                      selectedTable === table && styles.tableNumberSelected
-                    ]}>
-                      {table}
-                    </Text>
-                    {isTableOccupied(table) && (
-                      <View style={styles.occupiedIndicator}>
-                        <Text style={styles.occupiedText}>●</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      {/* Mesas según el modo de vista */}
+      <View style={styles.section}>
+        <ScrollView 
+          showsVerticalScrollIndicator={true}
+          style={styles.tablesScroll}
+        >
+          {groupTablesInRows(getCurrentTables(), 10).map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.tableRow}>
+              {row.map((table) => (
+                <TouchableOpacity
+                  key={table}
+                  style={[
+                    styles.tableCard,
+                    getTableCardStyle(),
+                    selectedTable === table && styles.tableCardSelected,
+                    isTableOccupied(table) && styles.tableCardOccupied
+                  ]}
+                  onPress={() => onSelectTable(table)}
+                >
+                  <Text style={[
+                    styles.tableNumber,
+                    selectedTable === table && styles.tableNumberSelected
+                  ]}>
+                    {table}
+                  </Text>
+                  {isTableOccupied(table) && (
+                    <View style={styles.occupiedIndicator}>
+                      <Text style={styles.occupiedText}>●</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -190,6 +187,10 @@ const styles = StyleSheet.create({
   tableCardTakeaway: {
     backgroundColor: '#1A2A3A',
     borderColor: '#90CAF9',
+  },
+  tableCardTerrace: {
+    backgroundColor: '#2A3A2A',
+    borderColor: '#4CAF50',
   },
   tableCardSelected: {
     backgroundColor: '#FFD700',

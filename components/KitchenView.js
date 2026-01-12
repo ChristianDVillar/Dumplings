@@ -6,10 +6,12 @@ import { useAppContext } from '../contexts/AppContext';
 import { filterKitchenOrders } from '../utils/printHelpers';
 import { getElapsedTimeWithColor } from '../utils/timeHelpers';
 import ComandaTicket from './ComandaTicket';
+import { useTranslations } from '../utils/translations';
 
 const KitchenView = () => {
   const { tableOrders, getTableOrders, isTableOccupied, getKitchenTimestamp, getAllKitchenTimestamps, tableKitchenTimestamps } = useTableOrdersContext();
-  const { lastUpdate } = useAppContext();
+  const { lastUpdate, language } = useAppContext();
+  const t = useTranslations(language);
   const [selectedTable, setSelectedTable] = useState(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const tables = generateTables();
@@ -74,23 +76,23 @@ const KitchenView = () => {
     if (timestamp) {
       return getElapsedTimeWithColor(timestamp);
     }
-    return { text: 'Sin enviar', color: '#F44336' };
+    return { text: t.kitchen.notSent, color: '#F44336' };
   }, [selectedTable, getKitchenTimestamp, currentTime, tableKitchenTimestamps]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>👨‍🍳 Vista de Cocina</Text>
+      <Text style={styles.title}>{t.kitchen.title}</Text>
       
       {/* Lista de mesas ocupadas */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          Mesas con Pedidos {occupiedTables.length > 0 ? `(${occupiedTables.length})` : ''}
+          {t.kitchen.tablesWithOrders(occupiedTables.length)}
         </Text>
         {occupiedTables.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No hay mesas con pedidos de cocina</Text>
+            <Text style={styles.emptyText}>{t.kitchen.noTables}</Text>
             <Text style={styles.emptySubtext}>
-              Agrega items a una mesa desde la vista de camarero
+              {t.kitchen.noTablesSubtext}
             </Text>
           </View>
         ) : (
@@ -118,7 +120,7 @@ const KitchenView = () => {
                 {/* Timer en la tarjeta de mesa - siempre visible */}
                 <View style={styles.tableTimer}>
                   <Text style={styles.tableTimerText}>
-                    {tableData.elapsedTime ? tableData.elapsedTime.text : 'Sin enviar'}
+                    {tableData.elapsedTime ? tableData.elapsedTime.text : t.kitchen.notSent}
                   </Text>
                   {tableData.timerCount > 1 && (
                     <Text style={styles.tableTimerCount}>
@@ -137,13 +139,13 @@ const KitchenView = () => {
         <View style={styles.ticketSection}>
           <View style={styles.comandaHeader}>
             <View style={styles.comandaHeaderLeft}>
-              <Text style={styles.comandaTitle}>Comanda Mesa {selectedTable}</Text>
+              <Text style={styles.comandaTitle}>{t.kitchen.table} {selectedTable}</Text>
             </View>
             {/* Timer al costado de la comanda - siempre visible */}
             <View style={styles.comandaTimer}>
-              <Text style={styles.comandaTimerLabel}>Tiempo:</Text>
+              <Text style={styles.comandaTimerLabel}>{t.kitchen.time}:</Text>
               <Text style={[styles.comandaTimerValue, latestElapsedTime && { color: latestElapsedTime.color }]}>
-                {latestElapsedTime ? latestElapsedTime.text : 'Sin enviar'}
+                {latestElapsedTime ? latestElapsedTime.text : t.kitchen.notSent}
               </Text>
               {allElapsedTimes.length > 1 && (
                 <Text style={styles.comandaTimerCount}>
@@ -167,17 +169,17 @@ const KitchenView = () => {
       {selectedTable && tableOrdersList.length === 0 && (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
-            No hay pedidos de cocina en esta mesa
+            {t.kitchen.noTables}
           </Text>
           <Text style={styles.emptySubtext}>
-            (Los items de ensaladas/bebidas no se muestran aquí)
+            ({t.kitchen.items})
           </Text>
         </View>
       )}
 
       {!selectedTable && occupiedTables.length === 0 && (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay mesas con pedidos</Text>
+          <Text style={styles.emptyText}>{t.kitchen.noTables}</Text>
         </View>
       )}
     </View>

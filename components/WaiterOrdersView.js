@@ -4,9 +4,13 @@ import { useTableOrdersContext } from '../contexts/TableOrdersContext';
 import { generateTables } from '../utils/helpers';
 import { generatePrintData, formatPrintText, filterSaladsAndDrinks } from '../utils/printHelpers';
 import ComandaTicket from './ComandaTicket';
+import { useAppContext } from '../contexts/AppContext';
+import { useTranslations } from '../utils/translations';
 
 const WaiterOrdersView = () => {
   const { tableOrders, getTableOrders, isTableOccupied } = useTableOrdersContext();
+  const { language } = useAppContext();
+  const t = useTranslations(language);
   const [selectedTable, setSelectedTable] = useState(null);
   const tables = generateTables();
   const allTables = [...tables.regular, ...tables.takeaway];
@@ -26,16 +30,16 @@ const WaiterOrdersView = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📋 Comandas de Camarero</Text>
+      <Text style={styles.title}>{t.waiterOrders.title}</Text>
       
       {/* Lista de mesas ocupadas */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          Mesas con Pedidos {occupiedTables.length > 0 ? `(${occupiedTables.length})` : ''}
+          {t.waiterOrders.tablesWithOrders(occupiedTables.length)}
         </Text>
         {occupiedTables.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No hay mesas con pedidos</Text>
+            <Text style={styles.emptyText}>{t.waiterOrders.noTables}</Text>
           </View>
         ) : (
           <ScrollView 
@@ -81,14 +85,14 @@ const WaiterOrdersView = () => {
       {selectedTable && tableOrdersList.length === 0 && (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
-            No hay pedidos en esta mesa
+            {t.waiterOrders.noOrdersInTable}
           </Text>
         </View>
       )}
 
       {!selectedTable && occupiedTables.length === 0 && (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay mesas con pedidos</Text>
+          <Text style={styles.emptyText}>{t.waiterOrders.noTables}</Text>
         </View>
       )}
     </View>

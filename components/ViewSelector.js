@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAppContext } from '../contexts/AppContext';
+import { useTranslations } from '../utils/translations';
 
 const ViewSelector = () => {
-  const { currentView, switchView, userRole, logout } = useAppContext();
+  const { currentView, switchView, userRole, logout, language } = useAppContext();
+  const t = useTranslations(language);
 
   return (
     <View style={styles.container}>
@@ -18,7 +20,7 @@ const ViewSelector = () => {
           styles.buttonText,
           currentView === 'waiter' && styles.buttonTextActive
         ]}>
-          👨‍💼 Camarero
+          {t.views.waiter}
         </Text>
       </TouchableOpacity>
       
@@ -33,7 +35,7 @@ const ViewSelector = () => {
           styles.buttonText,
           currentView === 'waiter-orders' && styles.buttonTextActive
         ]}>
-          📋 Comandas
+          {t.views.orders}
         </Text>
       </TouchableOpacity>
       
@@ -48,7 +50,7 @@ const ViewSelector = () => {
           styles.buttonText,
           currentView === 'kitchen' && styles.buttonTextActive
         ]}>
-          👨‍🍳 Cocina
+          {t.views.kitchen}
         </Text>
       </TouchableOpacity>
       
@@ -63,7 +65,7 @@ const ViewSelector = () => {
           styles.buttonText,
           currentView === 'client' && styles.buttonTextActive
         ]}>
-          👤 Cliente
+          {t.views.client}
         </Text>
       </TouchableOpacity>
       
@@ -72,7 +74,7 @@ const ViewSelector = () => {
         onPress={logout}
       >
         <Text style={styles.logoutButtonText}>
-          Salir
+          {t.views.logout}
         </Text>
       </TouchableOpacity>
     </View>

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { arraysEqual, getTableOrdersFromState } from '../utils/helpers';
 import { storageService } from '../services/storageService';
 import { orderService } from '../services/orderService';
+import { dailyCleanupService } from '../services/dailyCleanupService';
 
 const TableOrdersContext = createContext();
 
@@ -22,11 +23,51 @@ export const TableOrdersProvider = ({ children }) => {
   const [tableKitchenComments, setTableKitchenComments] = useState({}); // Comentarios de comandas: { tableNumber: { timestamp: comment } }
   const [isLoading, setIsLoading] = useState(true);
 
+  // Función para limpiar comandas del día anterior (mantiene historial para estadísticas)
+  const performDailyCleanup = async () => {
+    console.log('[TableOrdersContext] 🧹 Ejecutando limpieza diaria a las 00:00...');
+    
+    // Limpiar comandas activas
+    setTableOrders({});
+    
+    // Limpiar descuentos
+    setTableDiscounts({});
+    
+    // Limpiar timestamps de cocina
+    setTableKitchenTimestamps({});
+    
+    // Limpiar comandas completadas
+    setCompletedKitchenOrders({});
+    
+    // Limpiar comentarios de cocina
+    setTableKitchenComments({});
+    
+    // IMPORTANTE: NO limpiar tableHistory - se mantiene para estadísticas
+    
+    // Guardar los datos limpiados inmediatamente
+    try {
+      await Promise.all([
+        storageService.saveTableOrders({}),
+        storageService.saveTableDiscounts({}),
+        storageService.saveKitchenTimestamps({}),
+        storageService.saveCompletedKitchenOrders({}),
+        storageService.saveKitchenComments({})
+      ]);
+      console.log('[TableOrdersContext] ✅ Limpieza diaria completada. Historial preservado para estadísticas.');
+    } catch (error) {
+      console.error('[TableOrdersContext] Error guardando datos después de limpieza:', error);
+    }
+  };
+
   // Cargar datos guardados al iniciar
   useEffect(() => {
     const loadPersistedData = async () => {
       try {
         setIsLoading(true);
+        
+        // Inicializar servicio de limpieza diaria
+        await dailyCleanupService.initialize();
+        
         const [orders, history, discounts, timestamps, completed, comments] = await Promise.all([
           storageService.loadTableOrders(),
           storageService.loadTableHistory(),
@@ -36,12 +77,17 @@ export const TableOrdersProvider = ({ children }) => {
           storageService.loadKitchenComments()
         ]);
 
-        if (orders) setTableOrders(orders);
-        if (history) setTableHistory(history);
-        if (discounts) setTableDiscounts(discounts);
-        if (timestamps) setTableKitchenTimestamps(timestamps);
-        if (completed) setCompletedKitchenOrders(completed);
-        if (comments) setTableKitchenComments(comments);
+        // Verificar si necesita limpieza al cargar
+        if (dailyCleanupService.hasDayChanged()) {
+          await performDailyCleanup();
+        } else {
+          if (orders) setTableOrders(orders);
+          if (history) setTableHistory(history);
+          if (discounts) setTableDiscounts(discounts);
+          if (timestamps) setTableKitchenTimestamps(timestamps);
+          if (completed) setCompletedKitchenOrders(completed);
+          if (comments) setTableKitchenComments(comments);
+        }
       } catch (error) {
         console.error('[TableOrdersContext] Error cargando datos:', error);
       } finally {
@@ -51,6 +97,22 @@ export const TableOrdersProvider = ({ children }) => {
 
     loadPersistedData();
   }, []);
+
+  // Monitorear cambio de día para limpieza automática
+  useEffect(() => {
+    if (isLoading) return;
+
+    const handleCleanup = async () => {
+      performDailyCleanup();
+      await dailyCleanupService.saveLastCleanupDate(dailyCleanupService.getCurrentDate());
+    };
+
+    dailyCleanupService.startMonitoring(handleCleanup);
+
+    return () => {
+      dailyCleanupService.stopMonitoring();
+    };
+  }, [isLoading]);
 
   // Guardar datos cuando cambien (con debounce)
   useEffect(() => {

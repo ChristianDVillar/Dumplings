@@ -72,12 +72,17 @@ export const filterMenu = (menuData, searchQuery) => {
  */
 export const generateTables = () => {
   const { TABLE_CONFIG } = require('./constants');
+  const terraceTables = [];
+  for (let i = TABLE_CONFIG.TERRACE_START; i <= TABLE_CONFIG.TERRACE_END; i++) {
+    terraceTables.push(i);
+  }
   const takeawayTables = [];
   for (let i = TABLE_CONFIG.TAKEAWAY_START; i <= TABLE_CONFIG.TAKEAWAY_END; i++) {
     takeawayTables.push(i);
   }
   return {
     regular: TABLE_CONFIG.REGULAR,
+    terrace: terraceTables,
     takeaway: takeawayTables
   };
 };

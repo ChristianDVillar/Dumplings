@@ -3,59 +3,79 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert,
 import { MENU_CATEGORIES, getCategoryDisplayName } from '../utils/menuCategories';
 import { useMenuContext } from '../contexts/MenuContext';
 import { useTableOrdersContext } from '../contexts/TableOrdersContext';
+import { useAppContext } from '../contexts/AppContext';
 import { generateTables } from '../utils/helpers';
 import StatisticsModal from './StatisticsModal';
+import QRGeneratorModal from './QRGeneratorModal';
+import QRTableSelectorModal from './QRTableSelectorModal';
 import { menuService } from '../services/menuService';
 import { statisticsService } from '../services/statisticsService';
+import { useTranslations } from '../utils/translations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isMobile = SCREEN_WIDTH < 768;
 
 const AdminView = () => {
-  const { menuData: menuItems, setMenuData: setMenuItems } = useMenuContext();
+  const { menuData: menuItems, setMenuData: setMenuItems, drinkOptions, setDrinkOptions, addDrinkOption, updateDrinkOption, deleteDrinkOption } = useMenuContext();
   const { tableOrders, getTableOrders, isTableOccupied } = useTableOrdersContext();
+  const { language } = useAppContext();
+  const t = useTranslations(language);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showRefrescosOnly, setShowRefrescosOnly] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showStatistics, setShowStatistics] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showQRSelectorModal, setShowQRSelectorModal] = useState(false);
+  const [selectedTableForQR, setSelectedTableForQR] = useState(null);
+  const [editingDrinkOptionIndex, setEditingDrinkOptionIndex] = useState(null);
+  const [newDrinkOption, setNewDrinkOption] = useState('');
   const tables = generateTables();
-  const allTables = [...tables.regular, ...tables.takeaway];
+  const allTables = [...tables.regular, ...tables.terrace, ...tables.takeaway];
 
   // Formulario para nuevo/editar item
   const [formData, setFormData] = useState({
     number: '',
     nameEs: '',
     nameEn: '',
+    nameZh: '',
     description: '',
     price: '',
     category: '',
     extras: [],
-    image: ''
+    image: '',
+    drinkOptions: null // null = usar tipos globales, array = tipos específicos
   });
 
-  // Filtrar items por categoría y búsqueda (sin filtrar por enabled)
+  // Función para identificar si un item es un refresco
+  const isRefresco = (item) => {
+    if (item.category !== 'BEBIDAS') return false;
+    const nameEs = (item.nameEs || '').toLowerCase();
+    const nameEn = (item.nameEn || '').toLowerCase();
+    const nameZh = (item.nameZh || '').toLowerCase();
+    return nameEs.includes('refresco') || nameEn.includes('soft drink') || nameEn.includes('soda') || nameZh.includes('汽水') || nameZh.includes('可乐');
+  };
+
+  // Filtrar items por categoría, refrescos y búsqueda (sin filtrar por enabled)
   const filteredItems = useMemo(() => {
     // Crear una copia del array para evitar problemas de referencia
     let items = [...menuItems];
 
-    if (selectedCategory) {
+    if (showRefrescosOnly) {
+      // Filtrar solo refrescos
+      items = items.filter(item => isRefresco(item));
+    } else if (selectedCategory) {
       // Obtener la key real de la categoría desde MENU_CATEGORIES
       const categoryKey = MENU_CATEGORIES[selectedCategory]?.key || selectedCategory;
       items = items.filter(item => item.category === categoryKey);
     }
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      items = items.filter(item =>
-        item.nameEs.toLowerCase().includes(query) ||
-        (item.nameEn && item.nameEn.toLowerCase().includes(query)) ||
-        (item.number && item.number.toString().includes(query)) ||
-        ((item.descriptionEs || item.description) && (item.descriptionEs || item.description).toLowerCase().includes(query))
-      );
+      items = menuService.searchItems(items, searchQuery, language);
     }
 
     return items;
-  }, [menuItems, selectedCategory, searchQuery]);
+  }, [menuItems, selectedCategory, showRefrescosOnly, searchQuery, language]);
 
   // Separar items en habilitados y deshabilitados, luego agrupar por categoría
   const { enabledItems, disabledItems } = useMemo(() => {
@@ -96,20 +116,30 @@ const AdminView = () => {
   };
 
   const handleAddNew = () => {
+    // Si estamos en modo refrescos, no hacer nada (la gestión está integrada en la vista)
+    if (showRefrescosOnly) {
+      // El usuario puede agregar tipos directamente en la vista integrada
+      return;
+    }
+    
+    // Para otras categorías, crear un nuevo item normalmente
     const firstCategoryKey = Object.values(MENU_CATEGORIES)[0]?.key || 'ENTRANTES';
     const suggestedNumber = getNextNumberForCategory(firstCategoryKey);
     setFormData({
       number: suggestedNumber,
       nameEs: '',
       nameEn: '',
+      nameZh: '',
       description: '',
       price: '',
       category: firstCategoryKey,
       extras: [],
       image: '',
+      drinkOptions: null,
       enabled: true
     });
     setSelectedCategory(null);
+    setShowRefrescosOnly(false);
     // Usar false para indicar que es un nuevo item (no null para que se muestre el formulario)
     setEditingItem(false);
   };
@@ -123,8 +153,10 @@ const AdminView = () => {
       description: item.descriptionEs || item.description || '',
       price: item.price?.toString() || '',
       category: item.category || Object.values(MENU_CATEGORIES)[0]?.key || 'ENTRANTES',
+      nameZh: item.nameZh || '',
       extras: item.extras || [],
       image: item.image || '',
+      drinkOptions: item.drinkOptions || null, // null = usar tipos globales, array = tipos específicos
       enabled: item.enabled !== false // Por defecto true si no está definido
     });
   };
@@ -158,6 +190,7 @@ const AdminView = () => {
       number: formData.number || undefined,
       nameEs: formData.nameEs,
       nameEn: formData.nameEn || undefined,
+      nameZh: formData.nameZh || undefined,
       descriptionEs: formData.description || undefined,
       descriptionEn: undefined,
       price: price,
@@ -165,6 +198,7 @@ const AdminView = () => {
       categoryEn: categoryEnMap[formData.category] || formData.category,
       quantity: null,
       image: formData.image.trim() || undefined,
+      drinkOptions: formData.drinkOptions && formData.drinkOptions.length > 0 ? formData.drinkOptions : undefined,
       enabled: formData.enabled !== false // Por defecto true
     };
 
@@ -225,15 +259,58 @@ const AdminView = () => {
     );
   }, [allTables, tableOrders, isTableOccupied, getTableOrders]);
 
+  const handleGenerateQR = (tableNumber) => {
+    setSelectedTableForQR(tableNumber);
+    setShowQRSelectorModal(false);
+    setShowQRModal(true);
+  };
+
+  const handleGenerateAllQRs = (allTables) => {
+    setShowQRSelectorModal(false);
+    // Generar QRs para todas las mesas
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const qrData = allTables.map(table => {
+      const url = `${baseUrl}/?table=${table}&mode=client`;
+      return { table, url };
+    });
+    
+    // Mostrar información de todas las URLs
+    const urlsText = qrData.map(({ table, url }) => `Mesa ${table}: ${url}`).join('\n\n');
+    Alert.alert(
+      'Códigos QR Generados',
+      `Se generaron ${allTables.length} códigos QR.\n\nURLs:\n\n${urlsText}`,
+      [
+        { text: 'OK' },
+        {
+          text: 'Copiar Todas',
+          onPress: () => {
+            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+              navigator.clipboard.writeText(urlsText);
+              Alert.alert('Éxito', 'Todas las URLs copiadas al portapapeles');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Botón de Estadísticas Históricas */}
-      <TouchableOpacity
-        style={styles.statsButton}
-        onPress={() => setShowStatistics(true)}
-      >
-        <Text style={styles.statsButtonText}>📊 Ver Estadísticas Históricas</Text>
-      </TouchableOpacity>
+      {/* Botones de Acciones */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={styles.statsButton}
+          onPress={() => setShowStatistics(true)}
+        >
+          <Text style={styles.statsButtonText}>📊 Ver Estadísticas Históricas</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.qrButton}
+          onPress={() => setShowQRSelectorModal(true)}
+        >
+          <Text style={styles.qrButtonText}>📱 Generar Códigos QR</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Estadísticas por item del día */}
       {Object.keys(itemStats).length > 0 && (
@@ -271,7 +348,7 @@ const AdminView = () => {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar items..."
+          placeholder={t.common.searchPlaceholder}
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -281,20 +358,37 @@ const AdminView = () => {
       {/* Filtros por categoría */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryFilter}>
         <TouchableOpacity
-          style={[styles.categoryChip, !selectedCategory && styles.categoryChipActive]}
-          onPress={() => setSelectedCategory(null)}
+          style={[styles.categoryChip, !selectedCategory && !showRefrescosOnly && styles.categoryChipActive]}
+          onPress={() => {
+            setSelectedCategory(null);
+            setShowRefrescosOnly(false);
+          }}
         >
-          <Text style={[styles.categoryChipText, !selectedCategory && styles.categoryChipTextActive]}>
+          <Text style={[styles.categoryChipText, !selectedCategory && !showRefrescosOnly && styles.categoryChipTextActive]}>
             Todas
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.categoryChip, styles.refrescosChip, showRefrescosOnly && styles.categoryChipActive]}
+          onPress={() => {
+            setSelectedCategory(null);
+            setShowRefrescosOnly(true);
+          }}
+        >
+          <Text style={[styles.categoryChipText, showRefrescosOnly && styles.categoryChipTextActive]}>
+            Refrescos
           </Text>
         </TouchableOpacity>
         {Object.keys(MENU_CATEGORIES).map(category => (
           <TouchableOpacity
             key={category}
-            style={[styles.categoryChip, selectedCategory === category && styles.categoryChipActive]}
-            onPress={() => setSelectedCategory(category)}
+            style={[styles.categoryChip, selectedCategory === category && !showRefrescosOnly && styles.categoryChipActive]}
+            onPress={() => {
+              setSelectedCategory(category);
+              setShowRefrescosOnly(false);
+            }}
           >
-            <Text style={[styles.categoryChipText, selectedCategory === category && styles.categoryChipTextActive]}>
+            <Text style={[styles.categoryChipText, selectedCategory === category && !showRefrescosOnly && styles.categoryChipTextActive]}>
               {MENU_CATEGORIES[category]?.nameEs || category}
             </Text>
           </TouchableOpacity>
@@ -303,7 +397,9 @@ const AdminView = () => {
 
       {/* Botón agregar nuevo */}
       <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
-        <Text style={styles.addButtonText}>+ Agregar Nuevo Item</Text>
+        <Text style={styles.addButtonText}>
+          {showRefrescosOnly ? '+ Agregar Nuevo Tipo de Refresco' : '+ Agregar Nuevo Item'}
+        </Text>
       </TouchableOpacity>
 
       {/* Formulario de edición/creación */}
@@ -341,6 +437,14 @@ const AdminView = () => {
             placeholderTextColor="#999"
             value={formData.nameEn}
             onChangeText={(text) => setFormData({...formData, nameEn: text})}
+          />
+          
+          <TextInput
+            style={styles.formInput}
+            placeholder="Nombre en chino (opcional)"
+            placeholderTextColor="#999"
+            value={formData.nameZh || ''}
+            onChangeText={(text) => setFormData({...formData, nameZh: text})}
           />
           
           <TextInput
@@ -405,6 +509,64 @@ const AdminView = () => {
             })}
           </ScrollView>
 
+          {/* Selector de tipos de refrescos (solo para refrescos) */}
+          {formData.category === 'BEBIDAS' && (
+            <View style={styles.drinkOptionsFormSection}>
+              <Text style={styles.formLabel}>Tipos de Refrescos:</Text>
+              <Text style={styles.formSubLabel}>
+                {formData.drinkOptions && formData.drinkOptions.length > 0 
+                  ? 'Usar tipos específicos para este refresco' 
+                  : 'Usar tipos globales (todos los refrescos)'}
+              </Text>
+              <TouchableOpacity
+                style={styles.toggleDrinkOptionsButton}
+                onPress={() => {
+                  if (formData.drinkOptions && formData.drinkOptions.length > 0) {
+                    // Cambiar a tipos globales
+                    setFormData({ ...formData, drinkOptions: null });
+                  } else {
+                    // Cambiar a tipos específicos (copiar los globales)
+                    setFormData({ ...formData, drinkOptions: [...drinkOptions] });
+                  }
+                }}
+              >
+                <Text style={styles.toggleDrinkOptionsButtonText}>
+                  {formData.drinkOptions && formData.drinkOptions.length > 0 
+                    ? 'Usar Tipos Globales' 
+                    : 'Usar Tipos Específicos'}
+                </Text>
+              </TouchableOpacity>
+              
+              {formData.drinkOptions && formData.drinkOptions.length > 0 && (
+                <View style={styles.drinkOptionsCheckboxes}>
+                  {drinkOptions.map((option, index) => {
+                    const isSelected = formData.drinkOptions.includes(option);
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.drinkOptionCheckbox}
+                        onPress={() => {
+                          const newOptions = isSelected
+                            ? formData.drinkOptions.filter(o => o !== option)
+                            : [...formData.drinkOptions, option];
+                          setFormData({ ...formData, drinkOptions: newOptions });
+                        }}
+                      >
+                        <View style={[
+                          styles.checkbox,
+                          isSelected && styles.checkboxSelected
+                        ]}>
+                          {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                        </View>
+                        <Text style={styles.drinkOptionCheckboxText}>{option}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.formButtons}>
             <TouchableOpacity
               style={[styles.formButton, styles.cancelButton]}
@@ -441,48 +603,206 @@ const AdminView = () => {
         {Object.keys(enabledItemsByCategory).length > 0 && (
           <View style={styles.statusSection}>
             <Text style={styles.statusSectionTitle}>✅ Items Habilitados</Text>
-            {Object.entries(enabledItemsByCategory).map(([category, items]) => (
-              <View key={`enabled-${category}`} style={styles.categorySection}>
-                <Text style={styles.categoryTitle}>
-                  {getCategoryDisplayName(category)} ({items.length})
-                </Text>
-                {items.map(item => (
-                  <View key={item.id} style={styles.itemCard}>
-                    <View style={styles.itemHeader}>
-                      <View style={styles.itemInfo}>
-                        {item.number && (
-                          <Text style={styles.itemNumber}>#{item.number}</Text>
-                        )}
-                        <Text style={styles.itemName}>{item.nameEs}</Text>
-                        {item.nameEn && (
-                          <Text style={styles.itemNameEn}>{item.nameEn}</Text>
-                        )}
+            {showRefrescosOnly ? (
+              <>
+                {/* Gestión de Tipos de Refrescos */}
+                <View key="drink-options-management" style={styles.categorySection}>
+                  <Text style={styles.categoryTitle}>
+                    {t.admin.drinkTypes} ({drinkOptions.length})
+                  </Text>
+                  
+                  {/* Lista de tipos de refrescos */}
+                  {drinkOptions.map((option, index) => (
+                    <View key={index} style={styles.drinkOptionCard}>
+                      <View style={styles.drinkOptionContent}>
+                        <Text style={styles.drinkOptionName}>{option}</Text>
+                        <View style={styles.drinkOptionActions}>
+                          {editingDrinkOptionIndex === index ? (
+                            <>
+                              <TouchableOpacity
+                                style={[styles.drinkOptionActionButton, styles.saveButton]}
+                                onPress={() => {
+                                  if (newDrinkOption.trim()) {
+                                    updateDrinkOption(index, newDrinkOption.trim());
+                                    setEditingDrinkOptionIndex(null);
+                                    setNewDrinkOption('');
+                                  }
+                                }}
+                              >
+                                <Text style={styles.drinkOptionActionButtonText}>✓</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.drinkOptionActionButton, styles.cancelButton]}
+                                onPress={() => {
+                                  setEditingDrinkOptionIndex(null);
+                                  setNewDrinkOption('');
+                                }}
+                              >
+                                <Text style={styles.drinkOptionActionButtonText}>✕</Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <>
+                              <TouchableOpacity
+                                style={[styles.drinkOptionActionButton, styles.editButton]}
+                                onPress={() => {
+                                  setEditingDrinkOptionIndex(index);
+                                  setNewDrinkOption(option);
+                                }}
+                              >
+                                <Text style={styles.drinkOptionActionButtonText}>✏️</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.drinkOptionActionButton, styles.deleteButton]}
+                                onPress={() => {
+                                  Alert.alert(
+                                    t.admin.deleteDrinkType,
+                                    t.admin.confirmDeleteDrinkType(option),
+                                    [
+                                      { text: t.common.cancel, style: 'cancel' },
+                                      {
+                                        text: t.common.delete,
+                                        style: 'destructive',
+                                        onPress: () => deleteDrinkOption(index)
+                                      }
+                                    ]
+                                  );
+                                }}
+                              >
+                                <Text style={styles.drinkOptionActionButtonText}>🗑️</Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </View>
                       </View>
-                      <Text style={styles.itemPrice}>{item.price.toFixed(2)}€</Text>
+                      {editingDrinkOptionIndex === index && (
+                        <TextInput
+                          style={styles.drinkOptionEditInput}
+                          value={newDrinkOption}
+                          onChangeText={setNewDrinkOption}
+                          placeholder={t.admin.drinkTypeName}
+                          placeholderTextColor="#999"
+                          autoFocus
+                        />
+                      )}
                     </View>
-                    {(item.descriptionEs || item.description) && (
-                      <Text style={styles.itemDescription}>
-                        {item.descriptionEs || item.description}
-                      </Text>
-                    )}
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.editButton]}
-                        onPress={() => handleEdit(item)}
-                      >
-                        <Text style={styles.actionButtonText}>Editar</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.disableButton]}
-                        onPress={() => handleToggleEnabled(item)}
-                      >
-                        <Text style={styles.actionButtonText}>Deshabilitar</Text>
-                      </TouchableOpacity>
+                  ))}
+
+                  {/* Agregar nuevo tipo */}
+                  <View style={styles.addDrinkOptionContainer}>
+                    <TextInput
+                      style={styles.addDrinkOptionInput}
+                      placeholder={t.admin.newDrinkType}
+                      placeholderTextColor="#999"
+                      value={editingDrinkOptionIndex === null ? newDrinkOption : ''}
+                      onChangeText={setNewDrinkOption}
+                      editable={editingDrinkOptionIndex === null}
+                    />
+                    <TouchableOpacity
+                      style={styles.addDrinkOptionButton}
+                      onPress={() => {
+                        if (newDrinkOption.trim() && editingDrinkOptionIndex === null) {
+                          addDrinkOption(newDrinkOption.trim());
+                          setNewDrinkOption('');
+                        }
+                      }}
+                    >
+                      <Text style={styles.addDrinkOptionButtonText}>+ {t.common.add}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Items de Refrescos */}
+                <View key="enabled-refrescos" style={styles.categorySection}>
+                  <Text style={styles.categoryTitle}>
+                    {t.admin.softDrinks} ({enabledItems.length})
+                  </Text>
+                  {enabledItems.map(item => (
+                    <View key={item.id} style={styles.itemCard}>
+                      <View style={styles.itemHeader}>
+                        <View style={styles.itemInfo}>
+                          {item.number && (
+                            <Text style={styles.itemNumber}>#{item.number}</Text>
+                          )}
+                          <Text style={styles.itemName}>{item.nameEs}</Text>
+                          {item.nameEn && (
+                            <Text style={styles.itemNameEn}>{item.nameEn}</Text>
+                          )}
+                          {item.nameZh && (
+                            <Text style={styles.itemNameEn}>{item.nameZh}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.itemPrice}>{item.price.toFixed(2)}€</Text>
+                      </View>
+                      {(item.descriptionEs || item.description) && (
+                        <Text style={styles.itemDescription}>
+                          {item.descriptionEs || item.description}
+                        </Text>
+                      )}
+                      <View style={styles.itemActions}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.editButton]}
+                          onPress={() => handleEdit(item)}
+                        >
+                          <Text style={styles.actionButtonText}>{t.common.edit}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.disableButton]}
+                          onPress={() => handleToggleEnabled(item)}
+                        >
+                          <Text style={styles.actionButtonText}>{t.admin.disable}</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <>
+                {Object.entries(enabledItemsByCategory).map(([category, items]) => (
+                  <View key={`enabled-${category}`} style={styles.categorySection}>
+                    <Text style={styles.categoryTitle}>
+                      {getCategoryDisplayName(category)} ({items.length})
+                    </Text>
+                    {items.map(item => (
+                      <View key={item.id} style={styles.itemCard}>
+                        <View style={styles.itemHeader}>
+                          <View style={styles.itemInfo}>
+                            {item.number && (
+                              <Text style={styles.itemNumber}>#{item.number}</Text>
+                            )}
+                            <Text style={styles.itemName}>{item.nameEs}</Text>
+                            {item.nameEn && (
+                              <Text style={styles.itemNameEn}>{item.nameEn}</Text>
+                            )}
+                          </View>
+                          <Text style={styles.itemPrice}>{item.price.toFixed(2)}€</Text>
+                        </View>
+                        {(item.descriptionEs || item.description) && (
+                          <Text style={styles.itemDescription}>
+                            {item.descriptionEs || item.description}
+                          </Text>
+                        )}
+                        <View style={styles.itemActions}>
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.editButton]}
+                            onPress={() => handleEdit(item)}
+                          >
+                            <Text style={styles.actionButtonText}>Editar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.disableButton]}
+                            onPress={() => handleToggleEnabled(item)}
+                          >
+                            <Text style={styles.actionButtonText}>Deshabilitar</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
                   </View>
                 ))}
-              </View>
-            ))}
+              </>
+            )}
           </View>
         )}
 
@@ -553,6 +873,29 @@ const AdminView = () => {
         visible={showStatistics}
         onClose={() => setShowStatistics(false)}
       />
+
+      {/* Modal de Selección de Mesas para QR */}
+      <QRTableSelectorModal
+        visible={showQRSelectorModal}
+        onClose={() => setShowQRSelectorModal(false)}
+        onSelectTable={handleGenerateQR}
+        onGenerateAll={handleGenerateAllQRs}
+        baseUrl={typeof window !== 'undefined' ? window.location.origin : ''}
+      />
+
+      {/* Modal de Generación de QR */}
+      <QRGeneratorModal
+        visible={showQRModal}
+        onClose={() => {
+          setShowQRModal(false);
+          setSelectedTableForQR(null);
+        }}
+        tableNumber={selectedTableForQR}
+        baseUrl={typeof window !== 'undefined' ? window.location.origin : ''}
+        logoUrl={null} // Puedes agregar una URL de logo aquí, ej: 'https://ejemplo.com/logo.png'
+        restaurantName="Dumplings Restaurant"
+      />
+
     </View>
   );
 };
@@ -903,12 +1246,17 @@ const styles = StyleSheet.create({
     color: '#FFA500',
     fontWeight: '600',
   },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 15,
+  },
   statsButton: {
+    flex: 1,
     backgroundColor: '#4CAF50',
     borderRadius: 8,
     padding: isMobile ? 15 : 18,
     alignItems: 'center',
-    marginBottom: 15,
     marginTop: 0,
     borderWidth: 2,
     borderColor: '#45A049',
@@ -928,6 +1276,270 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: isMobile ? 16 : 18,
     fontWeight: 'bold',
+  },
+  qrButton: {
+    flex: 1,
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    padding: isMobile ? 15 : 18,
+    alignItems: 'center',
+    marginTop: 0,
+    borderWidth: 2,
+    borderColor: '#1976D2',
+    minHeight: 50,
+    justifyContent: 'center',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 3,
+    }),
+  },
+  qrButtonText: {
+    color: '#FFF',
+    fontSize: isMobile ? 16 : 18,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  drinkOptionsModal: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    padding: isMobile ? 20 : 30,
+    width: isMobile ? '90%' : '600px',
+    maxHeight: '80%',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.5)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.5,
+      shadowRadius: 8,
+      elevation: 8,
+    }),
+  },
+  modalTitle: {
+    fontSize: isMobile ? 20 : 24,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  drinkOptionsList: {
+    maxHeight: 300,
+    marginBottom: 20,
+  },
+  drinkOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  drinkOptionText: {
+    flex: 1,
+    fontSize: isMobile ? 14 : 16,
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  drinkOptionInput: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 6,
+    padding: 10,
+    color: '#FFF',
+    fontSize: isMobile ? 14 : 16,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    marginRight: 10,
+  },
+  drinkOptionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  drinkOptionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  addDrinkOptionContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  addDrinkOptionInput: {
+    flex: 1,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    padding: 12,
+    color: '#FFF',
+    fontSize: isMobile ? 14 : 16,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  addDrinkOptionButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#45A049',
+  },
+  addDrinkOptionButtonText: {
+    color: '#FFF',
+    fontSize: isMobile ? 14 : 16,
+    fontWeight: 'bold',
+  },
+  drinkOptionCard: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FFD700',
+    borderColor: '#555',
+  },
+  drinkOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  drinkOptionName: {
+    flex: 1,
+    fontSize: isMobile ? 14 : 16,
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  drinkOptionActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  drinkOptionActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  drinkOptionActionButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  drinkOptionEditInput: {
+    marginTop: 10,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 6,
+    padding: 10,
+    color: '#FFF',
+    fontSize: isMobile ? 14 : 16,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  modalCloseButton: {
+    backgroundColor: '#666',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#777',
+  },
+  modalCloseButtonText: {
+    color: '#FFF',
+    fontSize: isMobile ? 16 : 18,
+    fontWeight: 'bold',
+  },
+  drinkOptionsFormSection: {
+    marginTop: 15,
+    marginBottom: 10,
+    padding: 15,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  formSubLabel: {
+    fontSize: isMobile ? 12 : 14,
+    color: '#FFA500',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  toggleDrinkOptionsButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#45A049',
+  },
+  toggleDrinkOptionsButtonText: {
+    color: '#FFF',
+    fontSize: isMobile ? 14 : 16,
+    fontWeight: 'bold',
+  },
+  drinkOptionsCheckboxes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  drinkOptionCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 6,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    minWidth: 120,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+  },
+  checkboxSelected: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  checkmark: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  drinkOptionCheckboxText: {
+    color: '#FFF',
+    fontSize: isMobile ? 12 : 14,
   },
 });
 
