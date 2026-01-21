@@ -54,10 +54,10 @@ const MenuByCategory = ({
   // Si hay búsqueda activa, expandir todas las categorías automáticamente
   useEffect(() => {
     if (searchQuery.trim()) {
-      const allCategories = new Set(sections.map(s => s.categoryKey));
+      const allCategories = new Set(sortedCategories);
       setExpandedCategories(allCategories);
     }
-  }, [searchQuery, sections]);
+  }, [searchQuery, sortedCategories]);
 
   // Función para toggle de categoría
   const toggleCategory = (categoryKey) => {

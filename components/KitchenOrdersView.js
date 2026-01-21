@@ -5,7 +5,6 @@ import { generateTables } from '../utils/helpers';
 import { useAppContext } from '../contexts/AppContext';
 import { filterKitchenOrders } from '../utils/printHelpers';
 import { getElapsedTimeWithColor } from '../utils/timeHelpers';
-import ComandaTicket from './ComandaTicket';
 import { statisticsService } from '../services/statisticsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -17,14 +16,23 @@ const KitchenOrdersView = () => {
     getTableOrders, 
     isTableOccupied, 
     getAllKitchenTimestamps,
-    markKitchenOrderCompleted,
+    toggleKitchenItemReady,
     isKitchenOrderCompleted,
-    getCompletedKitchenOrders,
     tableKitchenTimestamps,
     completedKitchenOrders,
-    getKitchenComment
+    isLoading
   } = useTableOrdersContext();
-  const { lastUpdate, setLastUpdate } = useAppContext();
+  
+  // Mostrar carga mientras se inicializa el contexto
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Cargando...</Text>
+      </View>
+    );
+  }
+  
+  const { lastUpdate } = useAppContext();
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showCompleted, setShowCompleted] = useState(true); // Mostrar todas las comandas por defecto
   const tables = generateTables();
@@ -38,68 +46,87 @@ const KitchenOrdersView = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Obtener todas las comandas (completadas y no completadas) agrupadas por mesa y timestamp
-  const allKitchenOrders = useMemo(() => {
-    const orders = [];
+  // Obtener todos los items de cocina de todas las mesas
+  const allKitchenItems = useMemo(() => {
+    const items = [];
     
     allTables.forEach(table => {
       if (!isTableOccupied(table)) return;
       
-      const allTimestamps = getAllKitchenTimestamps(table);
+      const allOrders = getTableOrders(table);
+      const kitchenOrders = filterKitchenOrders(allOrders);
       
-      allTimestamps.forEach(timestamp => {
-        const tableOrdersList = getTableOrders(table);
-        const kitchenOrders = filterKitchenOrders(tableOrdersList);
+      if (kitchenOrders.length === 0) return;
+      
+      const allTimestamps = getAllKitchenTimestamps(table);
+      const latestTimestamp = allTimestamps.length > 0 ? allTimestamps[allTimestamps.length - 1] : null;
+      
+      // Agregar todos los items de cocina de esta mesa
+      kitchenOrders.forEach(order => {
+        // Usar kitchenSentAt del item si existe, sino el timestamp más reciente de la mesa
+        const itemTimestamp = order.kitchenSentAt || latestTimestamp;
+        // Usar el timestamp más reciente como timestamp de comanda para agrupar
+        const comandaTimestamp = latestTimestamp || order.kitchenSentAt;
         
-        if (kitchenOrders.length > 0) {
-          const isCompleted = isKitchenOrderCompleted(table, timestamp);
-          const elapsedTime = getElapsedTimeWithColor(timestamp);
-          orders.push({
-            tableNumber: table,
-            timestamp,
-            orders: kitchenOrders,
-            elapsedTime,
-            isCompleted,
-            orderId: `${table}-${timestamp}` // ID único para esta comanda
-          });
-        }
+        // Verificar si la comanda está completada
+        const isComandaCompleted = latestTimestamp ? isKitchenOrderCompleted(table, latestTimestamp) : false;
+        
+        items.push({
+          tableNumber: table,
+          comandaTimestamp: comandaTimestamp,
+          order: order,
+          itemTimestamp: itemTimestamp,
+          isComandaCompleted: isComandaCompleted
+        });
       });
     });
     
     // Ordenar por timestamp (más antiguos primero)
-    return orders.sort((a, b) => a.timestamp - b.timestamp);
-  }, [allTables, tableOrders, lastUpdate, isTableOccupied, getAllKitchenTimestamps, isKitchenOrderCompleted, getTableOrders, currentTime, tableKitchenTimestamps, completedKitchenOrders]);
+    return items.sort((a, b) => {
+      const timestampA = a.comandaTimestamp || a.itemTimestamp || 0;
+      const timestampB = b.comandaTimestamp || b.itemTimestamp || 0;
+      return timestampA - timestampB;
+    });
+  }, [allTables, tableOrders, lastUpdate, isTableOccupied, getTableOrders, getAllKitchenTimestamps, isKitchenOrderCompleted, currentTime, tableKitchenTimestamps, completedKitchenOrders]);
 
-  // Filtrar comandas según el toggle
-  const displayedOrders = useMemo(() => {
+  // Filtrar items según el toggle y excluir items marcados como listos
+  const displayedItems = useMemo(() => {
+    // Primero filtrar items que están marcados como listos (siempre excluirlos)
+    const itemsNotReady = allKitchenItems.filter(item => !item.order.kitchenReady);
+    
     if (showCompleted) {
-      return allKitchenOrders; // Mostrar todas
+      return itemsNotReady; // Mostrar todas las pendientes (sin los listos)
     } else {
-      return allKitchenOrders.filter(order => !order.isCompleted); // Solo pendientes
+      return itemsNotReady.filter(item => !item.isComandaCompleted); // Solo pendientes no completadas
     }
-  }, [allKitchenOrders, showCompleted]);
+  }, [allKitchenItems, showCompleted]);
 
-  const handleMarkCompleted = (tableNumber, timestamp) => {
-    markKitchenOrderCompleted(tableNumber, timestamp);
-    setLastUpdate(Date.now());
-  };
-
-  // Calcular estadísticas por categoría
+  // Calcular estadísticas por categoría (solo items no listos)
   const categoryStats = useMemo(() => {
     const stats = {};
     
-    allKitchenOrders.forEach(orderData => {
-      orderData.orders.forEach(order => {
-        const category = order.item.category || 'OTROS';
+    // Solo contar items que no están marcados como listos
+    allKitchenItems
+      .filter(item => !item.order.kitchenReady)
+      .forEach(item => {
+        const category = item.order.item.category || 'OTROS';
         if (!stats[category]) {
           stats[category] = { name: category, total: 0 };
         }
-        stats[category].total += order.quantity;
+        stats[category].total += item.order.quantity;
       });
-    });
     
     return Object.values(stats).sort((a, b) => b.total - a.total);
-  }, [allKitchenOrders]);
+  }, [allKitchenItems]);
+
+  // Formatear timestamp de comanda
+  const formatComandaTime = (timestamp) => {
+    if (!timestamp) return '-';
+    return new Date(timestamp).toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -140,7 +167,7 @@ const KitchenOrdersView = () => {
         </View>
       )}
       
-      {displayedOrders.length === 0 ? (
+      {displayedItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No hay comandas pendientes</Text>
           <Text style={styles.emptySubtext}>
@@ -148,68 +175,88 @@ const KitchenOrdersView = () => {
           </Text>
         </View>
       ) : (
-        <ScrollView style={styles.ordersScroll}>
-          {displayedOrders.map((orderData) => {
-            return (
-              <View key={orderData.orderId} style={[
-                styles.orderCard,
-                orderData.isCompleted && styles.orderCardCompleted
-              ]}>
-                <View style={styles.orderHeader}>
-                  <View style={styles.orderHeaderLeft}>
-                    <Text style={styles.orderTableNumber}>
-                      Mesa {orderData.tableNumber}
-                    </Text>
-                    <Text style={styles.orderTime}>
-                      {new Date(orderData.timestamp).toLocaleTimeString('es-ES', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </Text>
+        <View style={styles.tableContainer}>
+          {/* Encabezado de la tabla */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.headerCell, styles.headerCellMesa]}>Mesa</Text>
+            <Text style={[styles.headerCell, styles.headerCellComanda]}>Comanda</Text>
+            <Text style={[styles.headerCell, styles.headerCellProducto]}>Producto</Text>
+            <Text style={[styles.headerCell, styles.headerCellCantidad]}>Cant.</Text>
+            <Text style={[styles.headerCell, styles.headerCellTiempo]}>Tiempo</Text>
+            <Text style={[styles.headerCell, styles.headerCellCheck]}>Listo</Text>
+          </View>
+
+          {/* Filas de la tabla */}
+          <ScrollView style={styles.tableBody}>
+            {displayedItems.map((item, index) => {
+              const { tableNumber, comandaTimestamp, order, itemTimestamp, isComandaCompleted } = item;
+              // Calcular tiempo transcurrido hasta que se marcó como listo (si está listo) o hasta ahora
+              const finalTimestamp = order.kitchenReadyAt || itemTimestamp;
+              const elapsed = finalTimestamp 
+                ? getElapsedTimeWithColor(finalTimestamp)
+                : { text: 'N/A', color: '#999' };
+              
+              // Construir nombre del producto con extras y bebida
+              let productName = order.item.nameEs;
+              if (order.item.number) {
+                productName += ` #${order.item.number}`;
+              }
+              const extras = [];
+              if (order.extras && order.extras.length > 0) {
+                extras.push(`+ ${order.extras.join(', ')}`);
+              }
+              if (order.drink) {
+                extras.push(`Bebida: ${order.drink}`);
+              }
+              
+              return (
+                <View
+                  key={`${tableNumber}-${order.orderId}-${index}`}
+                  style={[
+                    styles.tableRow,
+                    isComandaCompleted && styles.tableRowCompleted
+                  ]}
+                >
+                  <Text style={[styles.tableCell, styles.cellMesa]}>{tableNumber}</Text>
+                  <Text style={[styles.tableCell, styles.cellComanda]}>
+                    {formatComandaTime(comandaTimestamp)}
+                  </Text>
+                  <View style={[styles.tableCell, styles.cellProducto]}>
+                    <Text style={styles.productName}>{productName}</Text>
+                    {extras.length > 0 && (
+                      <Text style={styles.productExtras}>{extras.join(' • ')}</Text>
+                    )}
                   </View>
-                  <View style={styles.orderHeaderRight}>
-                    <View style={[
-                      styles.timerBadge,
-                      { backgroundColor: orderData.elapsedTime.color }
-                    ]}>
-                      <Text style={styles.timerText}>
-                        {orderData.elapsedTime.text}
-                      </Text>
+                  <Text style={[styles.tableCell, styles.cellCantidad]}>{order.quantity}</Text>
+                  <View style={[styles.tableCell, styles.cellTiempo]}>
+                    <View style={[styles.timerBadge, { backgroundColor: elapsed.color }]}>
+                      <Text style={styles.timerText}>{elapsed.text}</Text>
                     </View>
-                    {!orderData.isCompleted && (
-                      <TouchableOpacity
-                        style={styles.completeButton}
-                        onPress={() => handleMarkCompleted(orderData.tableNumber, orderData.timestamp)}
-                      >
-                        <Text style={styles.completeButtonText}>
-                          ✓ Lista
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {orderData.isCompleted && (
-                      <View style={styles.completedBadge}>
-                        <Text style={styles.completedBadgeText}>
-                          ✓ Completada
-                        </Text>
-                      </View>
-                    )}
+                  </View>
+                  <View style={[styles.tableCell, styles.cellCheck]}>
+                    <TouchableOpacity
+                      style={styles.checkbox}
+                      onPress={() => {
+                        if (toggleKitchenItemReady && typeof toggleKitchenItemReady === 'function') {
+                          toggleKitchenItemReady(tableNumber, order.orderId);
+                        } else {
+                          console.error('toggleKitchenItemReady no disponible:', {
+                            exists: !!toggleKitchenItemReady,
+                            type: typeof toggleKitchenItemReady,
+                            tableNumber,
+                            orderId: order.orderId
+                          });
+                        }
+                      }}
+                    >
+                      {/* Checkbox vacío - al presionarlo marca como listo y desaparece */}
+                    </TouchableOpacity>
                   </View>
                 </View>
-                
-                <View style={styles.ticketContainer}>
-                  <ComandaTicket
-                    tableNumber={orderData.tableNumber}
-                    orders={orderData.orders}
-                    type="kitchen"
-                    date={new Date(orderData.timestamp).toISOString()}
-                    showPrices={false}
-                    comment={getKitchenComment(orderData.tableNumber, orderData.timestamp)}
-                  />
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
+              );
+            })}
+          </ScrollView>
+        </View>
       )}
     </View>
   );
@@ -228,92 +275,148 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: isMobile ? 15 : 20,
   },
-  ordersScroll: {
+  tableContainer: {
     flex: 1,
-  },
-  orderCard: {
     backgroundColor: '#2A2A2A',
     borderRadius: 12,
-    marginBottom: isMobile ? 12 : 15,
-    padding: isMobile ? 12 : 15,
+    overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#FFD700',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 3,
-    }),
   },
-  orderHeader: {
+  tableHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: isMobile ? 10 : 15,
-    paddingBottom: isMobile ? 10 : 12,
+    backgroundColor: '#FFD700',
+    paddingVertical: isMobile ? 10 : 12,
+    paddingHorizontal: 8,
     borderBottomWidth: 2,
-    borderBottomColor: '#FFD700',
+    borderBottomColor: '#FFA500',
   },
-  orderHeaderLeft: {
+  headerCell: {
+    fontSize: isMobile ? 12 : 14,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    textAlign: 'center',
+  },
+  headerCellMesa: {
+    width: 60,
+  },
+  headerCellComanda: {
+    width: 80,
+  },
+  headerCellProducto: {
+    flex: 1,
+    textAlign: 'left',
+    paddingLeft: 8,
+  },
+  headerCellCantidad: {
+    width: 50,
+  },
+  headerCellTiempo: {
+    width: 80,
+  },
+  headerCellCheck: {
+    width: 60,
+  },
+  tableBody: {
     flex: 1,
   },
-  orderTableNumber: {
-    fontSize: isMobile ? 18 : 20,
+  tableRow: {
+    flexDirection: 'row',
+    backgroundColor: '#2A2A2A',
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A3A3A',
+    paddingVertical: isMobile ? 8 : 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    minHeight: isMobile ? 50 : 60,
+  },
+  tableRowReady: {
+    backgroundColor: '#1A3A1A',
+    opacity: 0.8,
+  },
+  tableRowCompleted: {
+    backgroundColor: '#1A2A1A',
+    opacity: 0.6,
+  },
+  tableCell: {
+    fontSize: isMobile ? 12 : 13,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  cellMesa: {
+    width: 60,
     fontWeight: 'bold',
     color: '#FFD700',
-    marginBottom: 4,
   },
-  orderTime: {
-    fontSize: isMobile ? 12 : 14,
+  cellComanda: {
+    width: 80,
+    fontSize: isMobile ? 11 : 12,
     color: '#FFA500',
   },
-  orderHeaderRight: {
-    flexDirection: 'row',
+  cellProducto: {
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingLeft: 8,
+  },
+  cellCantidad: {
+    width: 50,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  cellTiempo: {
+    width: 80,
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+  },
+  cellCheck: {
+    width: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productName: {
+    fontSize: isMobile ? 12 : 13,
+    fontWeight: '600',
+    color: '#FFD700',
+    marginBottom: 2,
+  },
+  productExtras: {
+    fontSize: isMobile ? 10 : 11,
+    color: '#FFA500',
+    fontStyle: 'italic',
   },
   timerBadge: {
-    paddingHorizontal: isMobile ? 10 : 12,
-    paddingVertical: isMobile ? 6 : 8,
-    borderRadius: 8,
-    minWidth: 60,
+    paddingHorizontal: isMobile ? 6 : 8,
+    paddingVertical: isMobile ? 3 : 4,
+    borderRadius: 6,
+    minWidth: isMobile ? 50 : 60,
     alignItems: 'center',
   },
   timerText: {
-    fontSize: isMobile ? 12 : 14,
+    fontSize: isMobile ? 10 : 11,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  completeButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: isMobile ? 14 : 16,
-    paddingVertical: isMobile ? 10 : 12,
-    borderRadius: 8,
-    minHeight: 44,
-    justifyContent: 'center',
+  checkbox: {
+    width: isMobile ? 28 : 32,
+    height: isMobile ? 28 : 32,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    backgroundColor: '#3A3A3A',
     alignItems: 'center',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 3,
-    }),
+    justifyContent: 'center',
   },
-  completeButtonText: {
-    color: '#FFFFFF',
-    fontSize: isMobile ? 13 : 14,
+  checkboxChecked: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  checkboxDisabled: {
+    opacity: 0.5,
+  },
+  checkmark: {
+    fontSize: isMobile ? 18 : 20,
     fontWeight: 'bold',
-  },
-  ticketContainer: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-    padding: isMobile ? 8 : 10,
+    color: '#FFFFFF',
   },
   emptyContainer: {
     flex: 1,
@@ -398,24 +501,6 @@ const styles = StyleSheet.create({
     fontSize: isMobile ? 20 : 24,
     fontWeight: 'bold',
     color: '#FFD700',
-  },
-  orderCardCompleted: {
-    opacity: 0.7,
-    borderColor: '#4CAF50',
-  },
-  completedBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: isMobile ? 14 : 16,
-    paddingVertical: isMobile ? 10 : 12,
-    borderRadius: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  completedBadgeText: {
-    color: '#FFFFFF',
-    fontSize: isMobile ? 13 : 14,
-    fontWeight: 'bold',
   },
 });
 

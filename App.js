@@ -102,9 +102,21 @@ function AppContent() {
     toggleExtra,
     handleSelectOption,
     handleSelectDrink,
-    handleAddItem,
-    handleAddDrink
+    handleAddItem: originalHandleAddItem,
+    handleAddDrink: originalHandleAddDrink
   } = useMenuHandlers(selectedTable, addItemToTable);
+
+  // Wrapper para handleAddItem que limpia la búsqueda después de agregar
+  const handleAddItem = (item) => {
+    originalHandleAddItem(item);
+    setSearchQuery(''); // Limpiar búsqueda después de agregar item
+  };
+
+  // Wrapper para handleAddDrink que limpia la búsqueda después de agregar
+  const handleAddDrink = (item, drink) => {
+    originalHandleAddDrink(item, drink);
+    setSearchQuery(''); // Limpiar búsqueda después de agregar bebida
+  };
   
   const {
     currentOrders,

@@ -259,6 +259,58 @@ export const TableOrdersProvider = ({ children }) => {
   };
 
   /**
+   * Marca items como enviados a cocina con timestamp por item
+   * @param {number} tableNumber - Número de mesa
+   * @param {Array} orderIds - Array de orderId a marcar
+   * @param {number} timestamp - Timestamp a asignar
+   */
+  const markKitchenItemsSent = (tableNumber, orderIds = [], timestamp = Date.now()) => {
+    const table = orderService.normalizeTableNumber(tableNumber);
+    const ids = new Set(orderIds);
+    setTableOrders(prev => {
+      const currentOrders = getTableOrdersFromState(prev, table);
+      const updatedOrders = currentOrders.map(order => {
+        if (!ids.has(order.orderId)) return order;
+        if (order.kitchenSentAt) return order;
+        return {
+          ...order,
+          kitchenSentAt: timestamp
+        };
+      });
+      return {
+        ...prev,
+        [table]: updatedOrders
+      };
+    });
+    return timestamp;
+  };
+
+  /**
+   * Marca o desmarca un item como listo en cocina
+   * @param {number} tableNumber - Número de mesa
+   * @param {number} orderId - ID de la orden
+   */
+  const toggleKitchenItemReady = (tableNumber, orderId) => {
+    const table = orderService.normalizeTableNumber(tableNumber);
+    setTableOrders(prev => {
+      const currentOrders = getTableOrdersFromState(prev, table);
+      const updatedOrders = currentOrders.map(order => {
+        if (order.orderId !== orderId) return order;
+        const nextReady = !order.kitchenReady;
+        return {
+          ...order,
+          kitchenReady: nextReady,
+          kitchenReadyAt: nextReady ? Date.now() : null
+        };
+      });
+      return {
+        ...prev,
+        [table]: updatedOrders
+      };
+    });
+  };
+
+  /**
    * Cambia los pedidos de una mesa a otra
    */
   const moveTableOrders = (fromTable, toTable) => {
@@ -551,13 +603,16 @@ export const TableOrdersProvider = ({ children }) => {
         getKitchenTimestamp,
         getAllKitchenTimestamps,
         tableKitchenTimestamps,
+        markKitchenItemsSent,
+        toggleKitchenItemReady,
         markKitchenOrderCompleted,
         isKitchenOrderCompleted,
         getCompletedKitchenOrders,
         completedKitchenOrders,
         setKitchenComment,
         getKitchenComment,
-        tableKitchenComments
+        tableKitchenComments,
+        isLoading
       }}
     >
       {children}
