@@ -12,7 +12,9 @@ const MenuByCategory = ({
   selectedTable,
   selectedExtras,
   selectedDrink,
+  selectedOptions,
   onToggleExtra,
+  onSelectOption,
   onSelectDrink,
   onAddDrink,
   onAddItem
@@ -77,7 +79,9 @@ const MenuByCategory = ({
         selectedTable={selectedTable}
         selectedExtras={selectedExtras}
         selectedDrink={selectedDrink}
+        selectedOptions={selectedOptions}
         onToggleExtra={onToggleExtra}
+        onSelectOption={onSelectOption}
         onSelectDrink={onSelectDrink}
         onAddDrink={onAddDrink}
         onAddItem={onAddItem}

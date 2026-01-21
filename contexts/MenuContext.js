@@ -35,7 +35,11 @@ export const MenuProvider = ({ children }) => {
             }
             return item;
           });
-          setMenuData(migratedMenu);
+          // Migración: incorporar nuevos items del menú base (por id)
+          const existingIds = new Set(migratedMenu.map(item => item.id));
+          const newItems = initialMenuData.filter(item => !existingIds.has(item.id));
+          const mergedMenu = newItems.length > 0 ? [...migratedMenu, ...newItems] : migratedMenu;
+          setMenuData(mergedMenu);
           
           // Guardar menú migrado si hubo cambios
           const hasChanges = savedMenu.some((item, index) => {
@@ -44,8 +48,8 @@ export const MenuProvider = ({ children }) => {
             }
             return false;
           });
-          if (hasChanges) {
-            await storageService.saveMenuData(migratedMenu);
+          if (hasChanges || newItems.length > 0) {
+            await storageService.saveMenuData(mergedMenu);
           }
         }
         
@@ -55,11 +59,21 @@ export const MenuProvider = ({ children }) => {
           const migratedDrinkOptions = savedDrinkOptions.map(option => 
             option === 'Coca' ? 'Coca Cola' : option
           );
+
+          // Incorporar nuevas opciones por defecto (ej. Sprite)
+          const mergedDrinkOptions = [...migratedDrinkOptions];
+          initialDrinkOptions.forEach(option => {
+            if (!mergedDrinkOptions.includes(option)) {
+              mergedDrinkOptions.push(option);
+            }
+          });
           
           // Solo actualizar si hubo cambios
-          if (migratedDrinkOptions.some((opt, idx) => opt !== savedDrinkOptions[idx])) {
-            setDrinkOptions(migratedDrinkOptions);
-            await storageService.saveDrinkOptions(migratedDrinkOptions);
+          const hasChanges = mergedDrinkOptions.length !== savedDrinkOptions.length ||
+            mergedDrinkOptions.some((opt, idx) => opt !== savedDrinkOptions[idx]);
+          if (hasChanges) {
+            setDrinkOptions(mergedDrinkOptions);
+            await storageService.saveDrinkOptions(mergedDrinkOptions);
           } else {
             setDrinkOptions(savedDrinkOptions);
           }

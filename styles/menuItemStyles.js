@@ -207,6 +207,48 @@ export const menuItemStyles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
   },
+  optionGroupsContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  optionGroup: {
+    marginBottom: 8,
+  },
+  optionGroupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFD700',
+    marginBottom: 8,
+  },
+  optionButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  optionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#3A3A3A',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  optionButtonSelected: {
+    backgroundColor: '#FFD700',
+    borderColor: '#FFA500',
+  },
+  optionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFD700',
+  },
+  optionButtonTextSelected: {
+    color: '#1A1A1A',
+  },
   addButton: {
     marginTop: 12,
     padding: 12,

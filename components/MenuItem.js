@@ -12,7 +12,9 @@ const MenuItem = ({
   selectedTable,
   selectedExtras,
   selectedDrink,
+  selectedOptions,
   onToggleExtra,
+  onSelectOption,
   onSelectDrink,
   onAddDrink,
   onAddItem,
@@ -31,9 +33,21 @@ const MenuItem = ({
   const availableDrinkOptions = item.drinkOptions && item.drinkOptions.length > 0 
     ? item.drinkOptions 
     : (drinkOptions || []);
+  const optionGroups = Array.isArray(item.optionGroups) ? item.optionGroups : [];
+  const selectedItemOptions = (selectedOptions && selectedOptions[item.id]) || {};
   const extras = selectedExtras[item.id] || [];
   const totalPrice = getTotalPrice(item, selectedExtras);
   const selectedDrinkType = selectedDrink[item.id];
+
+  const resolveGroupOptions = (group) => {
+    if (group.useGlobalDrinkOptions) {
+      return [
+        ...(drinkOptions || []),
+        ...(group.extraOptions || [])
+      ];
+    }
+    return group.options || [];
+  };
 
   // Función para agregar item al hacer clic en la imagen
   const handleImagePress = () => {
@@ -178,6 +192,46 @@ const MenuItem = ({
               Refresco seleccionado: {selectedDrinkType}
             </Text>
           ) : null}
+        </View>
+      ) : null}
+
+      {optionGroups.length > 0 ? (
+        <View style={customStyles.optionGroupsContainer}>
+          {optionGroups.map((group) => {
+            const options = resolveGroupOptions(group);
+            if (!options.length) {
+              return null;
+            }
+            const groupLabel = group.labelEs || group.labelEn || group.id;
+            return (
+              <View key={group.id} style={customStyles.optionGroup}>
+                <Text style={customStyles.optionGroupTitle}>{groupLabel}</Text>
+                <View style={customStyles.optionButtons}>
+                  {options.map((option) => {
+                    const isSelected = selectedItemOptions[group.id] === option;
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          customStyles.optionButton,
+                          isSelected && customStyles.optionButtonSelected
+                        ]}
+                        onPress={() => onSelectOption(item.id, group.id, option)}
+                      >
+                        <Text style={[
+                          customStyles.optionButtonText,
+                          isSelected && customStyles.optionButtonTextSelected
+                        ]}>
+                          {option}
+                          {isSelected ? ' ✓' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })}
         </View>
       ) : null}
       

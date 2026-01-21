@@ -52,7 +52,7 @@ export const ORDER_TYPES = {
 
 // Configuración de mesas
 export const TABLE_CONFIG = {
-  REGULAR: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15],
+  REGULAR: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17],
   TERRACE_START: 100,
   TERRACE_END: 108,
   TAKEAWAY_START: 200,
@@ -77,7 +77,8 @@ export const DRINK_OPTIONS = [
   'Nestea Limón',
   'Nestea Maracuyá',
   'Acuarius',
-  'Acuarius de Naranja'
+  'Acuarius de Naranja'  ,
+  'Sprite'
 ];
 
 // Precio de extras

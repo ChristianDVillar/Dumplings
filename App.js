@@ -98,7 +98,9 @@ function AppContent() {
   const {
     selectedExtras,
     selectedDrink,
+    selectedOptions,
     toggleExtra,
+    handleSelectOption,
     handleSelectDrink,
     handleAddItem,
     handleAddDrink
@@ -285,7 +287,9 @@ function AppContent() {
           selectedTable={selectedTable}
           selectedExtras={selectedExtras}
           selectedDrink={selectedDrink}
+          selectedOptions={selectedOptions}
           onToggleExtra={toggleExtra}
+          onSelectOption={handleSelectOption}
           onSelectDrink={handleSelectDrink}
           onAddDrink={handleAddDrink}
           onAddItem={handleAddItem}
@@ -416,7 +420,9 @@ function AppContent() {
         selectedTable={selectedTable}
         selectedExtras={selectedExtras}
         selectedDrink={selectedDrink}
+        selectedOptions={selectedOptions}
         onToggleExtra={toggleExtra}
+        onSelectOption={handleSelectOption}
         onSelectDrink={handleSelectDrink}
         onAddDrink={handleAddDrink}
         onAddItem={handleAddItem}

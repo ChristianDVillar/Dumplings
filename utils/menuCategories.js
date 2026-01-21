@@ -38,11 +38,17 @@ export const MENU_CATEGORIES = {
     nameEn: 'Main Dishes',
     order: 6
   },
+  COMBOS: {
+    key: 'COMBOS',
+    nameEs: 'Combos',
+    nameEn: 'Combos',
+    order: 7
+  },
   BEBIDAS: {
     key: 'BEBIDAS',
     nameEs: 'Bebidas',
     nameEn: 'Drinks',
-    order: 7
+    order: 8
   }
 };
 

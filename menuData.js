@@ -348,6 +348,94 @@ export const menuData = [
     quantity: null,
     customizable: true
   },
+  // COMBOS
+  {
+    id: 102,
+    number: 'C1',
+    category: 'COMBOS',
+    categoryEn: 'COMBOS',
+    nameEs: 'Combo 1',
+    nameEn: 'Combo 1',
+    descriptionEs: '2 rollitos vegetales, gyozas y bebida',
+    descriptionEn: '2 vegetable spring rolls, gyozas, and drink',
+    price: 9.50,
+    quantity: null,
+    optionGroups: [
+      {
+        id: 'gyozas',
+        labelEs: 'Gyozas',
+        labelEn: 'Gyozas',
+        options: ['Pollo', 'Carne'],
+        required: true
+      },
+      {
+        id: 'coccion',
+        labelEs: 'Cocción',
+        labelEn: 'Cooking',
+        options: ['Plancha', 'Fritas', 'Vapor'],
+        required: true
+      },
+      {
+        id: 'bebida',
+        labelEs: 'Bebida',
+        labelEn: 'Drink',
+        useGlobalDrinkOptions: true,
+        extraOptions: ['Cerveza Victoria', 'Cerveza Victoria sin alcohol'],
+        required: true
+      }
+    ]
+  },
+  {
+    id: 103,
+    number: 'C2',
+    category: 'COMBOS',
+    categoryEn: 'COMBOS',
+    nameEs: 'Combo 2',
+    nameEn: 'Combo 2',
+    descriptionEs: '1 Mò Xian, ensalada china y bebida',
+    descriptionEn: '1 Mò Xian, Chinese salad, and drink',
+    price: 7.50,
+    quantity: null,
+    optionGroups: [
+      {
+        id: 'bebida',
+        labelEs: 'Bebida',
+        labelEn: 'Drink',
+        useGlobalDrinkOptions: true,
+        extraOptions: ['Cerveza Victoria', 'Cerveza Victoria sin alcohol'],
+        required: true
+      }
+    ]
+  },
+  {
+    id: 104,
+    number: 'C3',
+    category: 'COMBOS',
+    categoryEn: 'COMBOS',
+    nameEs: 'Combo 3',
+    nameEn: 'Combo 3',
+    descriptionEs: 'Noodles de verdura, agridulce y bebida',
+    descriptionEn: 'Vegetable noodles, sweet and sour, and drink',
+    price: 12.95,
+    quantity: null,
+    optionGroups: [
+      {
+        id: 'proteina',
+        labelEs: 'Agridulce',
+        labelEn: 'Sweet & Sour',
+        options: ['Pollo', 'Cerdo', 'Tofu frito'],
+        required: true
+      },
+      {
+        id: 'bebida',
+        labelEs: 'Bebida',
+        labelEn: 'Drink',
+        useGlobalDrinkOptions: true,
+        extraOptions: ['Cerveza Victoria', 'Cerveza Victoria sin alcohol'],
+        required: true
+      }
+    ]
+  },
   // EL TOQUE FINAL
   {
     id: 81,
