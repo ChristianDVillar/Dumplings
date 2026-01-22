@@ -13,6 +13,11 @@ class ApiService {
    * @returns {Promise<any>} - Respuesta de la API
    */
   async request(endpoint, options = {}) {
+    // Si no hay URL configurada, lanzar error para que se use fallback local
+    if (!API_URL) {
+      throw new Error('API URL no configurada - usando modo offline');
+    }
+    
     const url = `${API_URL}${endpoint}`;
     const defaultOptions = {
       headers: {
@@ -47,6 +52,11 @@ class ApiService {
    * @returns {Promise<boolean>} - true si la API está disponible
    */
   async checkHealth() {
+    // Si no hay URL configurada, retornar false (modo offline)
+    if (!API_BASE_URL) {
+      return false;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/health`, {
         method: 'GET',

@@ -12,29 +12,37 @@ export const API_CONFIG = {
   // URL para desarrollo local
   DEVELOPMENT: 'http://localhost:3001/api',
   
-  // URL para producción - CAMBIAR ESTA URL cuando despliegues el servidor
-  PRODUCTION: 'https://your-api-domain.com/api',
+  // URL para producción - ACTUALIZAR cuando despliegues el servidor API
+  // Opciones: Railway, Render, Heroku, etc.
+  // Ejemplo: 'https://dumplings-api.railway.app/api'
+  PRODUCTION: process.env.REACT_APP_API_URL || 
+              (typeof window !== 'undefined' && window.REACT_APP_API_URL) ||
+              null, // null = usar modo offline
   
   // Detectar automáticamente la URL
   getApiUrl() {
+    // Si hay una URL configurada en variables de entorno, usarla
+    if (this.PRODUCTION && this.PRODUCTION !== 'https://your-api-domain.com/api') {
+      return this.PRODUCTION;
+    }
+    
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
       // Si estamos en localhost, usar el servidor local
       if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '') {
         return this.DEVELOPMENT;
       }
-      // En producción web, intentar usar el mismo host con puerto 3001
-      // O usar la URL de producción configurada
-      return this.PRODUCTION;
+      // En producción web sin URL configurada, retornar null para usar modo offline
+      return null;
     }
     
     // Para React Native
-    return isDevelopment ? this.DEVELOPMENT : this.PRODUCTION;
+    return isDevelopment ? this.DEVELOPMENT : (this.PRODUCTION || null);
   }
 };
 
-// Exportar la URL de la API
+// Exportar la URL de la API (puede ser null si no está configurada)
 export const API_URL = API_CONFIG.getApiUrl();
 
 // URL base sin /api para health checks
-export const API_BASE_URL = API_URL.replace('/api', '');
+export const API_BASE_URL = API_URL ? API_URL.replace('/api', '') : null;

@@ -7,10 +7,19 @@ require('dotenv').config();
 const dbService = require('../database/dbService');
 
 const app = express();
+// Usar PORT de Railway/Render o 3001 por defecto para desarrollo local
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Middleware CORS - Permitir todos los orígenes en desarrollo
+// En producción, puedes restringir a dominios específicos
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*', // Permitir todos en desarrollo
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Middleware de logging
