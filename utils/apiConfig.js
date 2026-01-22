@@ -21,9 +21,14 @@ export const API_CONFIG = {
   
   // Detectar automáticamente la URL
   getApiUrl() {
-    // Si hay una URL configurada en variables de entorno, usarla
-    if (this.PRODUCTION && this.PRODUCTION !== 'https://your-api-domain.com/api') {
-      return this.PRODUCTION;
+    // Si hay una URL configurada en variables de entorno y no es el placeholder, usarla
+    const prodUrl = this.PRODUCTION;
+    if (prodUrl && 
+        prodUrl !== 'https://your-api-domain.com/api' && 
+        prodUrl !== null && 
+        prodUrl !== 'null' &&
+        prodUrl.trim() !== '') {
+      return prodUrl;
     }
     
     if (typeof window !== 'undefined') {
@@ -33,11 +38,12 @@ export const API_CONFIG = {
         return this.DEVELOPMENT;
       }
       // En producción web sin URL configurada, retornar null para usar modo offline
+      console.log('[API Config] No API URL configurada, usando modo offline');
       return null;
     }
     
     // Para React Native
-    return isDevelopment ? this.DEVELOPMENT : (this.PRODUCTION || null);
+    return isDevelopment ? this.DEVELOPMENT : null;
   }
 };
 

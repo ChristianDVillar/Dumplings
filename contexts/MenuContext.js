@@ -29,8 +29,14 @@ export const MenuProvider = ({ children }) => {
       try {
         setIsLoading(true);
         
-        // Intentar conectar con la API primero
-        const apiHealthy = await apiService.checkHealth();
+        // Intentar conectar con la API primero (solo si hay URL configurada)
+        let apiHealthy = false;
+        try {
+          apiHealthy = await apiService.checkHealth();
+        } catch (error) {
+          // Si no hay URL configurada, checkHealth retorna false
+          apiHealthy = false;
+        }
         setApiAvailable(apiHealthy);
         
         if (apiHealthy && useApi) {
